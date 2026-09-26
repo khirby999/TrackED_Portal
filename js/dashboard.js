@@ -110,18 +110,20 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const deletedCourses = JSON.parse(localStorage.getItem("tracked_deleted_courses") || "[]").map(d => d.toLowerCase());
 
-        // Purge orphan enrollment keys for courses that do NOT exist in teacherCourses
+        // Purge orphan enrollment keys ONLY if we have an active list of valid courses
         const validCourseNames = new Set(teacherCourses.map(c => (c.name || "").trim().toLowerCase()));
-        Object.keys(localStorage).forEach(k => {
-            if (k.startsWith("tracked_enrolled_")) {
-                const cName = k.replace("tracked_enrolled_", "").trim().toLowerCase();
-                if (!validCourseNames.has(cName)) {
-                    localStorage.removeItem(k);
+        if (validCourseNames.size > 0) {
+            Object.keys(localStorage).forEach(k => {
+                if (k.startsWith("tracked_enrolled_")) {
+                    const cName = k.replace("tracked_enrolled_", "").trim().toLowerCase();
+                    if (!validCourseNames.has(cName)) {
+                        localStorage.removeItem(k);
+                    }
                 }
-            }
-        });
+            });
+        }
 
-        // Check which courses THIS student is actually enrolled in by the teacher
+        // Check which courses THIS student is actually enrolled in
         const enrolledCourses = [];
         teacherCourses.forEach(c => {
             if (!c.name) return;
@@ -149,10 +151,10 @@ document.addEventListener("DOMContentLoaded", () => {
         return enrolledCourses;
     }
 
-    function renderStudentCourses() {
+    function renderStudentCourses(customCoursesList) {
         if (!studentCoursesGrid) return;
 
-        const courses = getEnrolledCourses();
+        const courses = Array.isArray(customCoursesList) ? customCoursesList : getEnrolledCourses();
         studentCoursesGrid.innerHTML = "";
 
         if (courses.length === 0) {
@@ -172,7 +174,7 @@ document.addEventListener("DOMContentLoaded", () => {
             card.className = `tab-card ${course.colorClass || "tab-course"}`;
             card.setAttribute("data-course-name", course.name);
             card.setAttribute("data-course-code", course.code || "");
-            card.setAttribute("data-instructor", course.instructor || "Prof. Instructor");
+            card.setAttribute("data-instructor", course.instructor || "Prof. Billie Eilish");
 
             card.innerHTML = `
                 <div class="tab-icon">
@@ -214,8 +216,66 @@ document.addEventListener("DOMContentLoaded", () => {
         return div.innerHTML;
     }
 
-    // Initial render
-    renderStudentCourses();
+    async function loadStudentCourses() {
+        // 1. Initial render from local cache so the dashboard renders immediately
+        const localCourses = getEnrolledCourses();
+        if (localCourses.length > 0) {
+            renderStudentCourses(localCourses);
+        } else {
+            // Show subtle spinner if cache is initially empty on a fresh browser
+            if (studentCoursesGrid) {
+                studentCoursesGrid.innerHTML = `
+                    <div style="text-align: center; color: #64748b; padding: 40px; width: 100%;">
+                        <i class="fa-solid fa-spinner fa-spin" style="font-size: 36px; margin-bottom: 12px; color: #3b82f6;"></i>
+                        <p style="font-size: 14px; color: #64748b;">Loading your enrolled courses...</p>
+                    </div>
+                `;
+            }
+        }
+
+        // 2. Fetch directly from Supabase Cloud in real-time
+        if (window.TrackED_DB && typeof window.TrackED_DB.getStudentEnrolledCourses === "function") {
+            try {
+                const sid = (currentStudentId || "").trim();
+                const cloudCourses = await window.TrackED_DB.getStudentEnrolledCourses(sid);
+                if (cloudCourses && cloudCourses.length > 0) {
+                    try {
+                        let teacherCourses = JSON.parse(localStorage.getItem("tracked_teacher_courses") || "[]");
+                        cloudCourses.forEach(cc => {
+                            if (!teacherCourses.some(tc => tc.name && tc.name.trim().toLowerCase() === cc.name.trim().toLowerCase())) {
+                                teacherCourses.push({ code: cc.code, name: cc.name });
+                            }
+                            const enrollKey = `tracked_enrolled_${cc.name}`;
+                            let enrollList = JSON.parse(localStorage.getItem(enrollKey) || "[]");
+                            if (!enrollList.some(s => s.id && s.id.trim().toLowerCase() === sid.toLowerCase())) {
+                                enrollList.push({
+                                    id: sid,
+                                    name: currentStudentName
+                                });
+                                localStorage.setItem(enrollKey, JSON.stringify(enrollList));
+                            }
+                        });
+                        localStorage.setItem("tracked_teacher_courses", JSON.stringify(teacherCourses));
+                    } catch (e) {}
+
+                    renderStudentCourses(cloudCourses);
+                    return;
+                }
+            } catch (err) {
+                console.warn("[Dashboard] Error fetching cloud courses for student:", err);
+            }
+        }
+
+        renderStudentCourses();
+    }
+
+    // Load enrolled courses (local + cloud)
+    loadStudentCourses();
+
+    // Re-render when background two-way sync finishes
+    window.addEventListener("tracked_sync_completed", () => {
+        loadStudentCourses();
+    });
 
     // =========================================
     // FIRST TIME LOGIN: DEFAULT PASSWORD WARNING POPUP

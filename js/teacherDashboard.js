@@ -1302,6 +1302,11 @@ document.addEventListener("DOMContentLoaded", () => {
         // Initial render
         renderEnrolledTable();
 
+        // Refresh when background cloud sync completes
+        window.addEventListener("tracked_sync_completed", () => {
+            renderEnrolledTable();
+        });
+
         // Grab the new preview elements
         const enrollStudentFoundBox  = document.getElementById("enrollStudentFoundBox");
         const enrollFoundName        = document.getElementById("enrollFoundName");

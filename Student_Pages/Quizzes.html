@@ -79,67 +79,72 @@
             const currentStudentId = localStorage.getItem("tracked_student_id") || "2024-00123";
             const tableBody        = document.getElementById("quizTableBody");
 
-            const quizzesKey = `tracked_course_quizzes_${activeCourse}`;
-            const scoresKey  = `tracked_quiz_scores_${activeCourse}`;
+            function renderQuizTable() {
+                const quizzesKey = `tracked_course_quizzes_${activeCourse}`;
+                const scoresKey  = `tracked_quiz_scores_${activeCourse}`;
 
-            let quizzes   = [];
-            let scoresMap = {};
+                let quizzes   = [];
+                let scoresMap = {};
 
-            const quizRaw = localStorage.getItem(quizzesKey);
-            if (quizRaw) {
-                try { quizzes = JSON.parse(quizRaw) || []; } catch(e) {}
-            }
+                const quizRaw = localStorage.getItem(quizzesKey);
+                if (quizRaw) {
+                    try { quizzes = JSON.parse(quizRaw) || []; } catch(e) {}
+                }
 
-            const scoreRaw = localStorage.getItem(scoresKey);
-            if (scoreRaw) {
-                try { scoresMap = JSON.parse(scoreRaw) || {}; } catch(e) {}
-            }
+                const scoreRaw = localStorage.getItem(scoresKey);
+                if (scoreRaw) {
+                    try { scoresMap = JSON.parse(scoreRaw) || {}; } catch(e) {}
+                }
 
-            const sid = currentStudentId.trim();
-            const sidLower = sid.toLowerCase();
-            const studentScores = scoresMap[sid] || scoresMap[sidLower] || {};
+                const sid = currentStudentId.trim();
+                const sidLower = sid.toLowerCase();
+                const studentScores = scoresMap[sid] || scoresMap[sidLower] || {};
 
-            // Format today's date the same way attendance does: "Month DD, YYYY"
-            const today = new Date();
-            const formattedDate = today.toLocaleDateString("en-US", { month: "long", day: "2-digit", year: "numeric" });
+                // Format today's date the same way attendance does: "Month DD, YYYY"
+                const today = new Date();
+                const formattedDate = today.toLocaleDateString("en-US", { month: "long", day: "2-digit", year: "numeric" });
 
-            let records = [];
+                let records = [];
 
-            // If teacher created quizzes for this course, render only the quizzes where a score was recorded
-            if (quizzes.length > 0) {
-                quizzes.forEach(q => {
-                    const sc = studentScores[q.num];
-                    const hasScore = (sc !== undefined && sc !== null && sc !== "");
-                    if (hasScore) {
-                        records.push({
-                            number: q.name || `Quiz ${q.num}`,
-                            date: formattedDate,
-                            score: `${sc} / ${q.maxScore}`
-                        });
+                // If teacher created quizzes for this course, render only the quizzes where a score was recorded
+                if (quizzes.length > 0) {
+                    quizzes.forEach(q => {
+                        const sc = studentScores[q.num];
+                        const hasScore = (sc !== undefined && sc !== null && sc !== "");
+                        if (hasScore) {
+                            records.push({
+                                number: q.name || `Quiz ${q.num}`,
+                                date: formattedDate,
+                                score: `${sc} / ${q.maxScore}`
+                            });
+                        }
+                    });
+                }
+
+                if (tableBody) {
+                    if (records.length === 0) {
+                        tableBody.innerHTML = `
+                            <tr>
+                                <td colspan="3" style="text-align: center; color: #94a3b8; padding: 36px 20px; font-size: 14px;">
+                                    <i class="fa-solid fa-folder-open" style="font-size: 28px; display: block; margin-bottom: 10px; color: #cbd5e1;"></i>
+                                    There are no records yet.
+                                </td>
+                            </tr>
+                        `;
+                    } else {
+                        tableBody.innerHTML = records.map(quiz => `
+                            <tr>
+                                <td><strong>${quiz.number}</strong></td>
+                                <td>${quiz.date}</td>
+                                <td><span class="score-badge" style="background: #fffbeb; color: #b45309; font-weight: 600; padding: 4px 12px; border-radius: 8px;">${quiz.score}</span></td>
+                            </tr>
+                        `).join("");
                     }
-                });
-            }
-
-            if (tableBody) {
-                if (records.length === 0) {
-                    tableBody.innerHTML = `
-                        <tr>
-                            <td colspan="3" style="text-align: center; color: #94a3b8; padding: 36px 20px; font-size: 14px;">
-                                <i class="fa-solid fa-folder-open" style="font-size: 28px; display: block; margin-bottom: 10px; color: #cbd5e1;"></i>
-                                There are no records yet.
-                            </td>
-                        </tr>
-                    `;
-                } else {
-                    tableBody.innerHTML = records.map(quiz => `
-                        <tr>
-                            <td><strong>${quiz.number}</strong></td>
-                            <td>${quiz.date}</td>
-                            <td><span class="score-badge" style="background: #fffbeb; color: #b45309; font-weight: 600; padding: 4px 12px; border-radius: 8px;">${quiz.score}</span></td>
-                        </tr>
-                    `).join("");
                 }
             }
+
+            renderQuizTable();
+            window.addEventListener("tracked_sync_completed", renderQuizTable);
 
             // Account dropdown
             const accountBtn = document.getElementById("accountBtn");

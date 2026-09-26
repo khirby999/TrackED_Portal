@@ -79,67 +79,72 @@
             const currentStudentId = localStorage.getItem("tracked_student_id") || "2024-00123";
             const tableBody        = document.getElementById("activityTableBody");
 
-            const activitiesKey = `tracked_course_activities_${activeCourse}`;
-            const scoresKey     = `tracked_activity_scores_${activeCourse}`;
+            function renderActivityTable() {
+                const activitiesKey = `tracked_course_activities_${activeCourse}`;
+                const scoresKey     = `tracked_activity_scores_${activeCourse}`;
 
-            let activities = [];
-            let scoresMap  = {};
+                let activities = [];
+                let scoresMap  = {};
 
-            const actRaw = localStorage.getItem(activitiesKey);
-            if (actRaw) {
-                try { activities = JSON.parse(actRaw) || []; } catch(e) {}
-            }
+                const actRaw = localStorage.getItem(activitiesKey);
+                if (actRaw) {
+                    try { activities = JSON.parse(actRaw) || []; } catch(e) {}
+                }
 
-            const scoreRaw = localStorage.getItem(scoresKey);
-            if (scoreRaw) {
-                try { scoresMap = JSON.parse(scoreRaw) || {}; } catch(e) {}
-            }
+                const scoreRaw = localStorage.getItem(scoresKey);
+                if (scoreRaw) {
+                    try { scoresMap = JSON.parse(scoreRaw) || {}; } catch(e) {}
+                }
 
-            const sid = currentStudentId.trim();
-            const sidLower = sid.toLowerCase();
-            const studentScores = scoresMap[sid] || scoresMap[sidLower] || {};
+                const sid = currentStudentId.trim();
+                const sidLower = sid.toLowerCase();
+                const studentScores = scoresMap[sid] || scoresMap[sidLower] || {};
 
-            // Format today's date the same way attendance does: "Month DD, YYYY"
-            const today = new Date();
-            const formattedDate = today.toLocaleDateString("en-US", { month: "long", day: "2-digit", year: "numeric" });
+                // Format today's date the same way attendance does: "Month DD, YYYY"
+                const today = new Date();
+                const formattedDate = today.toLocaleDateString("en-US", { month: "long", day: "2-digit", year: "numeric" });
 
-            let records = [];
+                let records = [];
 
-            // If teacher created activities for this course, render only the activities where a score was recorded
-            if (activities.length > 0) {
-                activities.forEach(act => {
-                    const sc = studentScores[act.num];
-                    const hasScore = (sc !== undefined && sc !== null && sc !== "");
-                    if (hasScore) {
-                        records.push({
-                            number: act.name || `Activity ${act.num}`,
-                            date: formattedDate,
-                            score: `${sc} / ${act.maxScore}`
-                        });
+                // If teacher created activities for this course, render only the activities where a score was recorded
+                if (activities.length > 0) {
+                    activities.forEach(act => {
+                        const sc = studentScores[act.num];
+                        const hasScore = (sc !== undefined && sc !== null && sc !== "");
+                        if (hasScore) {
+                            records.push({
+                                number: act.name || `Activity ${act.num}`,
+                                date: formattedDate,
+                                score: `${sc} / ${act.maxScore}`
+                            });
+                        }
+                    });
+                }
+
+                if (tableBody) {
+                    if (records.length === 0) {
+                        tableBody.innerHTML = `
+                            <tr>
+                                <td colspan="3" style="text-align: center; color: #94a3b8; padding: 36px 20px; font-size: 14px;">
+                                    <i class="fa-solid fa-folder-open" style="font-size: 28px; display: block; margin-bottom: 10px; color: #cbd5e1;"></i>
+                                    There are no records yet.
+                                </td>
+                            </tr>
+                        `;
+                    } else {
+                        tableBody.innerHTML = records.map(act => `
+                            <tr>
+                                <td><strong>${act.number}</strong></td>
+                                <td>${act.date}</td>
+                                <td><span class="score-badge" style="background: #eff6ff; color: #1d4ed8; font-weight: 600; padding: 4px 12px; border-radius: 8px;">${act.score}</span></td>
+                            </tr>
+                        `).join("");
                     }
-                });
-            }
-
-            if (tableBody) {
-                if (records.length === 0) {
-                    tableBody.innerHTML = `
-                        <tr>
-                            <td colspan="3" style="text-align: center; color: #94a3b8; padding: 36px 20px; font-size: 14px;">
-                                <i class="fa-solid fa-folder-open" style="font-size: 28px; display: block; margin-bottom: 10px; color: #cbd5e1;"></i>
-                                There are no records yet.
-                            </td>
-                        </tr>
-                    `;
-                } else {
-                    tableBody.innerHTML = records.map(act => `
-                        <tr>
-                            <td><strong>${act.number}</strong></td>
-                            <td>${act.date}</td>
-                            <td><span class="score-badge" style="background: #eff6ff; color: #1d4ed8; font-weight: 600; padding: 4px 12px; border-radius: 8px;">${act.score}</span></td>
-                        </tr>
-                    `).join("");
                 }
             }
+
+            renderActivityTable();
+            window.addEventListener("tracked_sync_completed", renderActivityTable);
 
             // Account dropdown
             const accountBtn = document.getElementById("accountBtn");

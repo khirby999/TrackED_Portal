@@ -461,22 +461,36 @@ const SUPABASE_CONFIG = {
             const client = getClient();
             if (!client || !courseName) return null;
             const teacherId = (localStorage.getItem("tracked_teacher_id") || "T-2024-0042").trim();
-            const { data: teacherCourse } = await client
-                .from("courses")
-                .select("course_id")
-                .eq("course_name", courseName.trim())
-                .eq("teacher_id", teacherId)
-                .maybeSingle();
+            const cleanName = courseName.trim();
 
-            if (teacherCourse) return teacherCourse.course_id;
+            try {
+                // 1. Try matching current teacher's course
+                const { data: teacherCourse, error: tErr } = await client
+                    .from("courses")
+                    .select("course_id")
+                    .ilike("course_name", cleanName)
+                    .eq("teacher_id", teacherId)
+                    .limit(1);
 
-            const { data: anyCourse } = await client
-                .from("courses")
-                .select("course_id")
-                .eq("course_name", courseName.trim())
-                .maybeSingle();
+                if (!tErr && teacherCourse && teacherCourse.length > 0) {
+                    return teacherCourse[0].course_id;
+                }
 
-            return anyCourse ? anyCourse.course_id : null;
+                // 2. Fallback: match any course with this name across all teachers
+                const { data: anyCourse, error: aErr } = await client
+                    .from("courses")
+                    .select("course_id")
+                    .ilike("course_name", cleanName)
+                    .limit(1);
+
+                if (!aErr && anyCourse && anyCourse.length > 0) {
+                    return anyCourse[0].course_id;
+                }
+            } catch (e) {
+                console.warn("[TrackED Backend] Error resolving course_id for:", courseName, e);
+            }
+
+            return null;
         },
 
         /**
@@ -580,11 +594,11 @@ const SUPABASE_CONFIG = {
             if (!client) return { success: true };
             try {
                 const teacherId = (localStorage.getItem("tracked_teacher_id") || "T-2024-0042").trim();
-                const { error } = await client.from("courses").insert([{
+                const { error } = await client.from("courses").upsert([{
                     course_code: courseCode.trim().toUpperCase(),
                     course_name: courseName.trim(),
                     teacher_id: teacherId
-                }]);
+                }], { onConflict: "teacher_id,course_code" });
                 if (error) throw error;
                 console.log(`[TrackED Backend] Course "${courseName}" synced to Supabase Cloud! 📚`);
                 return { success: true };
@@ -638,10 +652,28 @@ const SUPABASE_CONFIG = {
          */
         enrollStudent: async function (courseName, studentId) {
             const client = getClient();
-            if (!client) return false;
+            if (!client || !courseName || !studentId) return false;
             try {
-                const courseId = await this._getCourseId(courseName);
-                if (!courseId) return false;
+                let courseId = await this._getCourseId(courseName);
+                if (!courseId) {
+                    // Auto-register course in Cloud if missing
+                    console.log(`[TrackED Backend] Course "${courseName}" missing from cloud, auto-registering...`);
+                    let courseCode = "CS101";
+                    try {
+                        const stored = JSON.parse(localStorage.getItem("tracked_teacher_courses") || "[]");
+                        const match = stored.find(c => c.name && c.name.trim().toLowerCase() === courseName.trim().toLowerCase());
+                        if (match && match.code) courseCode = match.code;
+                    } catch (e) {}
+
+                    await this.addCourse(courseCode, courseName);
+                    courseId = await this._getCourseId(courseName);
+                }
+
+                if (!courseId) {
+                    console.warn(`[TrackED Backend] Could not resolve course ID for "${courseName}". Enrollment skipped.`);
+                    return false;
+                }
+
                 const { error } = await client.from("course_enrollments").upsert([{
                     course_id: courseId,
                     student_id: studentId.trim()
@@ -671,6 +703,91 @@ const SUPABASE_CONFIG = {
             } catch (e) {
                 console.warn("[TrackED Backend] Cloud unenroll failed:", e);
                 return false;
+            }
+        },
+
+        /**
+         * Fetch enrolled courses directly from Supabase Cloud for a given student ID
+         */
+        getStudentEnrolledCourses: async function (studentId) {
+            const client = getClient();
+            if (!client || !studentId) return [];
+            try {
+                const sid = studentId.trim();
+
+                // 1. Primary query: Query course_enrollments with courses & teachers relations
+                const { data, error } = await client
+                    .from("course_enrollments")
+                    .select(`
+                        course_id,
+                        courses (
+                            course_id,
+                            course_code,
+                            course_name,
+                            teacher_id,
+                            teachers (
+                                name
+                            )
+                        )
+                    `)
+                    .eq("student_id", sid);
+
+                if (!error && Array.isArray(data) && data.length > 0) {
+                    const list = [];
+                    for (const item of data) {
+                        const c = item.courses;
+                        if (!c || !c.course_name) continue;
+                        const instName = (c.teachers && c.teachers.name) ? c.teachers.name : "Prof. Billie Eilish";
+                        list.push({
+                            id: c.course_id,
+                            code: c.course_code || "CS",
+                            name: c.course_name,
+                            instructor: instName,
+                            icon: "fa-graduation-cap",
+                            colorClass: "tab-course"
+                        });
+                    }
+                    if (list.length > 0) return list;
+                }
+
+                // 2. Fallback query if nested relation join is not enabled or returns empty
+                const { data: rawEnrolls } = await client
+                    .from("course_enrollments")
+                    .select("course_id")
+                    .eq("student_id", sid);
+
+                if (rawEnrolls && rawEnrolls.length > 0) {
+                    const courseIds = rawEnrolls.map(r => r.course_id);
+                    const { data: rawCourses } = await client
+                        .from("courses")
+                        .select("course_id, course_code, course_name, teacher_id")
+                        .in("course_id", courseIds);
+
+                    if (rawCourses && rawCourses.length > 0) {
+                        const teacherIds = [...new Set(rawCourses.map(c => c.teacher_id).filter(Boolean))];
+                        let teacherMap = {};
+                        if (teacherIds.length > 0) {
+                            const { data: teacherList } = await client
+                                .from("teachers")
+                                .select("teacher_id, name")
+                                .in("teacher_id", teacherIds);
+                            (teacherList || []).forEach(t => { teacherMap[t.teacher_id] = t.name; });
+                        }
+
+                        return rawCourses.map(c => ({
+                            id: c.course_id,
+                            code: c.course_code || "CS",
+                            name: c.course_name,
+                            instructor: teacherMap[c.teacher_id] || "Prof. Billie Eilish",
+                            icon: "fa-graduation-cap",
+                            colorClass: "tab-course"
+                        }));
+                    }
+                }
+                return [];
+            } catch (err) {
+                console.warn("[TrackED Backend] Exception in getStudentEnrolledCourses:", err);
+                return [];
             }
         },
 
@@ -902,17 +1019,54 @@ const SUPABASE_CONFIG = {
                 }
                 const { data: dbCourses } = await courseQuery;
                 if (Array.isArray(dbCourses)) {
+                    // For teachers: auto-push any locally created courses missing in Supabase Cloud
+                    if (userRole === "teacher") {
+                        let localCourses = [];
+                        try {
+                            localCourses = JSON.parse(localStorage.getItem("tracked_teacher_courses") || "[]");
+                        } catch (e) {}
+                        for (const lc of localCourses) {
+                            if (!lc.name) continue;
+                            const exists = dbCourses.some(c => c.course_name.trim().toLowerCase() === lc.name.trim().toLowerCase());
+                            if (!exists) {
+                                console.log(`[TrackED Backend] Auto-syncing missing local course to cloud: ${lc.name}`);
+                                await this.addCourse(lc.code || "CS101", lc.name);
+                            }
+                        }
+                    }
+
                     const mappedCourses = dbCourses.map(c => ({
                         code: c.course_code,
                         name: c.course_name
                     }));
-                    if (userRole === "teacher") {
-                        localStorage.setItem("tracked_teacher_courses", JSON.stringify(mappedCourses));
-                    }
+                    // Cache courses for BOTH teacher and student so UI can resolve course details
+                    localStorage.setItem("tracked_teacher_courses", JSON.stringify(mappedCourses));
 
                     // 3. For each course, sync enrollments, activities, quizzes, exams, attendance
                     for (const c of dbCourses) {
                         const cName = c.course_name;
+
+                        // For teachers: auto-push any local enrollments missing in Cloud
+                        if (userRole === "teacher") {
+                            let localEnrolled = [];
+                            try {
+                                localEnrolled = JSON.parse(localStorage.getItem(`tracked_enrolled_${cName}`) || "[]");
+                            } catch (e) {}
+                            if (localEnrolled.length > 0) {
+                                const { data: cloudEnrolls } = await client.from("course_enrollments").select("student_id").eq("course_id", c.course_id);
+                                const cloudSids = new Set((cloudEnrolls || []).map(e => (e.student_id || "").toLowerCase()));
+                                const missingInCloud = localEnrolled.filter(s => s.id && !cloudSids.has(s.id.trim().toLowerCase()));
+                                if (missingInCloud.length > 0) {
+                                    const toUpsert = missingInCloud.map(s => ({
+                                        course_id: c.course_id,
+                                        student_id: s.id.trim()
+                                    }));
+                                    await client.from("course_enrollments").upsert(toUpsert, { onConflict: "course_id,student_id" });
+                                    console.log(`[TrackED Backend] Auto-synced ${toUpsert.length} local enrollments for "${cName}" to Cloud! 🎓`);
+                                }
+                            }
+                        }
+
                         // Enrollments
                         const { data: enrolls } = await client.from("course_enrollments").select("student_id").eq("course_id", c.course_id);
                         if (enrolls) {
@@ -1008,6 +1162,7 @@ const SUPABASE_CONFIG = {
                     }
                 }
                 console.log("[TrackED Backend] 🚀 All data synced from Supabase Cloud to local cache!");
+                window.dispatchEvent(new CustomEvent("tracked_sync_completed"));
                 return true;
             } catch (err) {
                 console.warn("[TrackED Backend] Error syncing from cloud:", err);

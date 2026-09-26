@@ -90,63 +90,68 @@
                 return dateStr;
             }
 
-            // Read live teacher attendance records for this course
-            const attendanceKey = `tracked_course_attendance_${activeCourse}`;
-            let attendanceMap = {};
-            const raw = localStorage.getItem(attendanceKey);
-            if (raw) {
-                try { attendanceMap = JSON.parse(raw) || {}; } catch(e) {}
-            }
-
-            const sid = currentStudentId.trim();
-            const sidLower = sid.toLowerCase();
-            let filteredRecords = [];
-
-            // Sorted dates descending (most recent date first)
-            const dates = Object.keys(attendanceMap).sort().reverse();
-            dates.forEach(d => {
-                const dayMap = attendanceMap[d] || {};
-                // Match this student by ID
-                const stStatus = dayMap[sid] || dayMap[sidLower];
-                if (stStatus) {
-                    const statusLower = stStatus.toLowerCase();
-                    // Only show Late and Absent — Present records are not displayed
-                    if (statusLower === "present") return;
-                    const statusStr = stStatus.charAt(0).toUpperCase() + stStatus.slice(1).toLowerCase();
-                    filteredRecords.push({
-                        date: formatDisplayDate(d),
-                        status: statusStr
-                    });
+            function renderAttendanceTable() {
+                // Read live teacher attendance records for this course
+                const attendanceKey = `tracked_course_attendance_${activeCourse}`;
+                let attendanceMap = {};
+                const raw = localStorage.getItem(attendanceKey);
+                if (raw) {
+                    try { attendanceMap = JSON.parse(raw) || {}; } catch(e) {}
                 }
-            });
 
-            if (tableBody) {
-                if (filteredRecords.length === 0) {
-                    tableBody.innerHTML = `
-                        <tr>
-                            <td colspan="2" style="text-align: center; color: #94a3b8; padding: 36px 20px; font-size: 14px;">
-                                <i class="fa-solid fa-folder-open" style="font-size: 28px; display: block; margin-bottom: 10px; color: #cbd5e1;"></i>
-                                There are no records yet.
-                            </td>
-                        </tr>
-                    `;
-                } else {
-                    tableBody.innerHTML = filteredRecords.map(record => {
-                        const sLower = record.status.toLowerCase();
-                        const isLate = sLower === "late";
-                        const isAbsent = sLower === "absent";
-                        const badgeClass = isLate ? "late" : (isAbsent ? "absent" : "present");
-                        const iconClass  = isLate ? "fa-clock" : (isAbsent ? "fa-circle-xmark" : "fa-circle-check");
+                const sid = currentStudentId.trim();
+                const sidLower = sid.toLowerCase();
+                let filteredRecords = [];
 
-                        return `
+                // Sorted dates descending (most recent date first)
+                const dates = Object.keys(attendanceMap).sort().reverse();
+                dates.forEach(d => {
+                    const dayMap = attendanceMap[d] || {};
+                    // Match this student by ID
+                    const stStatus = dayMap[sid] || dayMap[sidLower];
+                    if (stStatus) {
+                        const statusLower = stStatus.toLowerCase();
+                        // Only show Late and Absent — Present records are not displayed
+                        if (statusLower === "present") return;
+                        const statusStr = stStatus.charAt(0).toUpperCase() + stStatus.slice(1).toLowerCase();
+                        filteredRecords.push({
+                            date: formatDisplayDate(d),
+                            status: statusStr
+                        });
+                    }
+                });
+
+                if (tableBody) {
+                    if (filteredRecords.length === 0) {
+                        tableBody.innerHTML = `
                             <tr>
-                                <td>${record.date}</td>
-                                <td><span class="status-badge ${badgeClass}"><i class="fa-solid ${iconClass}"></i> ${record.status}</span></td>
+                                <td colspan="2" style="text-align: center; color: #94a3b8; padding: 36px 20px; font-size: 14px;">
+                                    <i class="fa-solid fa-folder-open" style="font-size: 28px; display: block; margin-bottom: 10px; color: #cbd5e1;"></i>
+                                    There are no records yet.
+                                </td>
                             </tr>
                         `;
-                    }).join("");
+                    } else {
+                        tableBody.innerHTML = filteredRecords.map(record => {
+                            const sLower = record.status.toLowerCase();
+                            const isLate = sLower === "late";
+                            const isAbsent = sLower === "absent";
+                            const badgeClass = isLate ? "late" : (isAbsent ? "absent" : "present");
+                            const iconClass  = isLate ? "fa-clock" : (isAbsent ? "fa-circle-xmark" : "fa-circle-check");
+
+                            return `
+                                <tr>
+                                    <td>${record.date}</td>
+                                    <td><span class="status-badge ${badgeClass}"><i class="fa-solid ${iconClass}"></i> ${record.status}</span></td>
+                                </tr>
+                            `;
+                        }).join("");
+                    }
                 }
             }
+
+            renderAttendanceTable();
+            window.addEventListener("tracked_sync_completed", renderAttendanceTable);
 
             // Account dropdown
             const accountBtn = document.getElementById("accountBtn");
