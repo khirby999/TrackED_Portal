@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TrackED - Activity Records</title>
+    <link rel="icon" type="image/png" href="../images/TrackEd Logo 2.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/activity.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+</head>
+<body>
+
+    <header>
+        <div class="header-left">
+            <a href="Course.html" class="back-btn" title="Back to Course">
+                <i class="fa-solid fa-arrow-left"></i>
+            </a>
+            <h2>Activity Records</h2>
+        </div>
+
+        <div class="right-menu">
+            <div class="account">
+                <button class="account-btn" id="accountBtn">
+                    <i class="fa-solid fa-user"></i>
+                    Account
+                    <i class="fa-solid fa-caret-down"></i>
+                </button>
+
+                <ul class="dropdown-menu" id="dropdownMenu">
+                    <li><a href="../settings.html"><i class="fa-solid fa-gear"></i>Settings</a></li>
+                    <li><a href="../index.html"><i class="fa-solid fa-right-from-bracket"></i>Log Out</a></li>
+                </ul>
+            </div>
+        </div>
+    </header>
+
+    <main class="activity-page">
+        <div class="activity-table">
+            <div class="table-header">
+                <h2>Activity Records</h2>
+            </div>
+
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Activity #</th>
+                            <th>Date</th>
+                            <th>Score</th>
+                        </tr>
+                    </thead>
+
+                    <tbody id="activityTableBody">
+                        <!-- Loaded dynamically via JavaScript based on selected course -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <div class="left-side">
+            <p>TrackED.
+                <br>Track your academic progress with ease.
+            </p>
+            <p>&copy; 2026 TrackED. All Rights Reserved.</p>
+        </div>
+    </footer>
+
+    <!-- Supabase CDN + Backend Adapter -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../js/supabaseClient.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const activeCourse     = localStorage.getItem("tracked_student_selected_course") || "Programming Fundamentals";
+            const currentStudentId = localStorage.getItem("tracked_student_id") || "2024-00123";
+            const tableBody        = document.getElementById("activityTableBody");
+
+            const activitiesKey = `tracked_course_activities_${activeCourse}`;
+            const scoresKey     = `tracked_activity_scores_${activeCourse}`;
+
+            let activities = [];
+            let scoresMap  = {};
+
+            const actRaw = localStorage.getItem(activitiesKey);
+            if (actRaw) {
+                try { activities = JSON.parse(actRaw) || []; } catch(e) {}
+            }
+
+            const scoreRaw = localStorage.getItem(scoresKey);
+            if (scoreRaw) {
+                try { scoresMap = JSON.parse(scoreRaw) || {}; } catch(e) {}
+            }
+
+            const sid = currentStudentId.trim();
+            const sidLower = sid.toLowerCase();
+            const studentScores = scoresMap[sid] || scoresMap[sidLower] || {};
+
+            // Format today's date the same way attendance does: "Month DD, YYYY"
+            const today = new Date();
+            const formattedDate = today.toLocaleDateString("en-US", { month: "long", day: "2-digit", year: "numeric" });
+
+            let records = [];
+
+            // If teacher created activities for this course, render only the activities where a score was recorded
+            if (activities.length > 0) {
+                activities.forEach(act => {
+                    const sc = studentScores[act.num];
+                    const hasScore = (sc !== undefined && sc !== null && sc !== "");
+                    if (hasScore) {
+                        records.push({
+                            number: act.name || `Activity ${act.num}`,
+                            date: formattedDate,
+                            score: `${sc} / ${act.maxScore}`
+                        });
+                    }
+                });
+            }
+
+            if (tableBody) {
+                if (records.length === 0) {
+                    tableBody.innerHTML = `
+                        <tr>
+                            <td colspan="3" style="text-align: center; color: #94a3b8; padding: 36px 20px; font-size: 14px;">
+                                <i class="fa-solid fa-folder-open" style="font-size: 28px; display: block; margin-bottom: 10px; color: #cbd5e1;"></i>
+                                There are no records yet.
+                            </td>
+                        </tr>
+                    `;
+                } else {
+                    tableBody.innerHTML = records.map(act => `
+                        <tr>
+                            <td><strong>${act.number}</strong></td>
+                            <td>${act.date}</td>
+                            <td><span class="score-badge" style="background: #eff6ff; color: #1d4ed8; font-weight: 600; padding: 4px 12px; border-radius: 8px;">${act.score}</span></td>
+                        </tr>
+                    `).join("");
+                }
+            }
+
+            // Account dropdown
+            const accountBtn = document.getElementById("accountBtn");
+            const dropdownMenu = document.getElementById("dropdownMenu");
+
+            if (accountBtn && dropdownMenu) {
+                accountBtn.addEventListener("click", (e) => {
+                    e.stopPropagation();
+                    dropdownMenu.classList.toggle("show");
+                });
+
+                document.addEventListener("click", (event) => {
+                    if (!accountBtn.contains(event.target) && !dropdownMenu.contains(event.target)) {
+                        dropdownMenu.classList.remove("show");
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>

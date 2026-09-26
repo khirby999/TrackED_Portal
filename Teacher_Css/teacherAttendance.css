@@ -1,0 +1,553 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background: #f5f7fb;
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    font-family: 'Poppins', Arial, Helvetica, sans-serif;
+}
+
+/* =========================================
+   HEADER
+========================================= */
+header {
+    background-color: rgb(6, 6, 207);
+    display: flex;
+    justify-content: space-between;
+    height: 70px;
+    align-items: center;
+    padding: 0 30px;
+    border-bottom: solid 5px yellow;
+    flex-shrink: 0;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.header-back-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.15);
+    color: white;
+    text-decoration: none;
+    font-size: 15px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    transition: all 0.2s ease;
+}
+
+.header-back-btn:hover {
+    background: rgba(255, 255, 255, 0.28);
+    transform: translateX(-3px);
+}
+
+.left-menu {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.profile {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid white;
+}
+
+.left-menu h4 {
+    font-size: 19px;
+    color: white;
+    font-weight: 600;
+}
+
+/* =========================================
+   RIGHT MENU / ACCOUNT
+========================================= */
+.right-menu {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.account {
+    position: relative;
+}
+
+.account-btn {
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    color: white;
+    font-size: 14px;
+    font-family: inherit;
+    font-weight: 500;
+    cursor: pointer;
+    padding: 8px 16px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: 0.25s ease;
+}
+
+.account-btn:hover {
+    background: rgba(255, 255, 255, 0.25);
+}
+
+.dropdown-menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    display: none;
+    list-style: none;
+    background: white;
+    border-radius: 10px;
+    min-width: 170px;
+    padding: 8px 0;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+    border: 1px solid #e2e8f0;
+    z-index: 100;
+}
+
+.dropdown-menu li a {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+    color: #334155;
+    padding: 10px 18px;
+    font-size: 14px;
+    transition: 0.2s ease;
+}
+
+.dropdown-menu li a:hover {
+    background: #f1f5f9;
+    color: rgb(6, 6, 207);
+}
+
+.show {
+    display: block;
+}
+
+/* =========================================
+   PAGE CONTENT
+========================================= */
+.page-main {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    padding: 35px 25px;
+}
+
+.attendance-content {
+    width: 100%;
+    max-width: 960px;
+    margin: 0 auto;
+}
+
+/* Page Header */
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.page-header-text h1 {
+    font-size: 28px;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 4px;
+}
+
+.page-header-text p {
+    font-size: 14px;
+    color: #64748b;
+}
+
+.back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 18px;
+    background: #ffffff;
+    color: #334155;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 10px;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+    transition: all 0.2s ease;
+}
+
+.back-btn:hover {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+    color: rgb(6, 6, 207);
+    transform: translateX(-3px);
+}
+
+/* Course Information Card */
+.course-info-card {
+    background: #ffffff;
+    border-radius: 14px;
+    border: 1.5px solid #e2e8f0;
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+}
+
+.course-icon {
+    width: 46px;
+    height: 46px;
+    border-radius: 12px;
+    background: #ecfdf5;
+    color: #059669;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+}
+
+.course-info-text h2 {
+    font-size: 18px;
+    font-weight: 600;
+    color: #1e293b;
+    margin-bottom: 2px;
+}
+
+.course-info-text p {
+    font-size: 13px;
+    color: #64748b;
+}
+
+/* Attendance Card */
+.attendance-card {
+    background: #ffffff;
+    border-radius: 16px;
+    border: 1.5px solid #e2e8f0;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.04);
+    padding: 26px;
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+    padding-bottom: 20px;
+    border-bottom: 1.5px solid #f1f5f9;
+}
+
+.card-header-info h2 {
+    font-size: 20px;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 4px;
+}
+
+.card-header-info p {
+    font-size: 13px;
+    color: #64748b;
+}
+
+.date-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #f8fafc;
+    padding: 6px 14px;
+    border-radius: 10px;
+    border: 1.5px solid #e2e8f0;
+}
+
+.date-container label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #475569;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.date-container label i {
+    color: rgb(6, 6, 207);
+}
+
+.date-container input[type="date"] {
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-family: inherit;
+    font-size: 13px;
+    color: #1e293b;
+    outline: none;
+    transition: all 0.2s ease;
+}
+
+.date-container input[type="date"]:focus {
+    border-color: rgb(6, 6, 207);
+}
+
+.attendance-date-badge {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+}
+
+.attendance-date-badge.recorded {
+    background: #ecfdf5;
+    color: #059669;
+    border: 1px solid #a7f3d0;
+}
+
+.attendance-date-badge.new {
+    background: #eff6ff;
+    color: #2563eb;
+    border: 1px solid #bfdbfe;
+}
+
+/* Alert Banner */
+.modal-alert {
+    padding: 12px 18px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    animation: fadeIn 0.25s ease;
+}
+
+.modal-alert.success {
+    background: #ecfdf5;
+    color: #065f46;
+    border: 1px solid #a7f3d0;
+}
+
+.modal-alert.info {
+    background: #eff6ff;
+    color: #1e40af;
+    border: 1px solid #bfdbfe;
+}
+
+/* Table */
+.table-container {
+    margin-top: 20px;
+    overflow-x: auto;
+}
+
+table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+thead th {
+    background: #f8fafc;
+    color: #475569;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 14px 18px;
+    text-align: left;
+    border-top: 1px solid #e2e8f0;
+    border-bottom: 2px solid #e2e8f0;
+}
+
+thead th:first-child {
+    border-top-left-radius: 10px;
+    border-left: 1px solid #e2e8f0;
+}
+
+thead th:last-child {
+    border-top-right-radius: 10px;
+    border-right: 1px solid #e2e8f0;
+}
+
+tbody td {
+    padding: 16px 18px;
+    font-size: 14px;
+    color: #1e293b;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+tbody td:first-child {
+    font-weight: 600;
+    color: #3b82f6;
+}
+
+tbody tr:hover td {
+    background: #fbfcfe;
+}
+
+/* Select */
+.attendance-select {
+    padding: 8px 14px;
+    border-radius: 8px;
+    border: 1.5px solid #cbd5e1;
+    background: #ffffff;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    color: #1e293b;
+    cursor: pointer;
+    outline: none;
+    transition: all 0.2s ease;
+}
+
+.attendance-select:focus {
+    border-color: rgb(6, 6, 207);
+    box-shadow: 0 0 0 3px rgba(6, 6, 207, 0.12);
+}
+
+.attendance-select.status-present {
+    border-color: #a7f3d0;
+    background: #f0fdf4;
+    color: #15803d;
+}
+
+.attendance-select.status-late {
+    border-color: #fde68a;
+    background: #fffbeb;
+    color: #b45309;
+}
+
+.attendance-select.status-absent {
+    border-color: #fecaca;
+    background: #fef2f2;
+    color: #dc2626;
+}
+
+/* Save Container */
+.save-container {
+    margin-top: 24px;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.save-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 11px 24px;
+    background: rgb(6, 6, 207);
+    color: #ffffff;
+    border: none;
+    border-radius: 10px;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(6, 6, 207, 0.25);
+    transition: all 0.2s ease;
+}
+
+.save-btn:hover {
+    background: #1d4ed8;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(6, 6, 207, 0.35);
+}
+
+.save-btn:active {
+    transform: translateY(0);
+}
+
+/* =========================================
+   FOOTER
+========================================= */
+footer {
+    background-color: rgb(6, 6, 207);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    height: 70px;
+    padding: 10px 30px;
+    border-top: solid 5px yellow;
+    flex-shrink: 0;
+}
+
+.left-side {
+    text-align: start;
+    text-decoration: none;
+    color: white;
+    font-size: 11px;
+    line-height: 1.5;
+}
+
+/* =========================================
+   RESPONSIVE DESIGN
+========================================= */
+@media (max-width: 768px) {
+    header {
+        height: 60px;
+        padding: 0 15px;
+    }
+
+    .left-menu h4 {
+        font-size: 16px;
+    }
+
+    .profile {
+        width: 36px;
+        height: 36px;
+    }
+
+    .page-main {
+        padding: 20px 15px;
+    }
+
+    .page-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .card-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .date-container {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .save-container {
+        justify-content: stretch;
+    }
+
+    .save-btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    footer {
+        padding: 15px;
+    }
+}

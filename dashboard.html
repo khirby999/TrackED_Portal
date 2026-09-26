@@ -5,20 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TrackED</title>
     <link rel="icon" type="image/png" href="images/TrackEd Logo 2.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/dashboard.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
     
 </head>
 <body>
 
-     <header>
-
-        <button class="menu-btn" id="menuBtn">
-            <i class="fa-solid fa-bars"></i>
-        </button>
-        <div class="left-menu"> 
-            <img src="images/profile.jpg" alt="Profile Picture" class="profile">
-            <h4>Billie Eilish</h4>
+    <header>
+        <div class="left-menu" id="profileTrigger" title="View Profile">
+            <img src="images/default-avatar.svg" alt="Profile Picture" class="profile" id="headerProfileImg">
+            <h4 id="headerStudentName">Billie Eilish</h4>
         </div>
 
         <div class="right-menu">
@@ -30,48 +29,73 @@
                 </button>
 
                 <ul class="dropdown-menu" id="dropdownMenu">
-                    <li><a href="#"><i class="fa-solid fa-user"></i>Profile</a></li>
-                    <li><a href="#"><i class="fa-solid fa-gear"></i>Settings</a></li>
+                    <li><a href="settings.html"><i class="fa-solid fa-gear"></i>Settings</a></li>
                     <li><a href="index.html"><i class="fa-solid fa-right-from-bracket"></i>Log Out</a></li>
                 </ul>
-
             </div>
         </div>
-            
     </header>
+
+    <!-- Profile Popup Overlay -->
+    <div class="profile-overlay" id="profileOverlay"></div>
+
+    <!-- Profile Popup Card -->
+    <div class="profile-popup" id="profilePopup">
+        <button class="profile-popup-close" id="profileClose" title="Close">
+            <i class="fa-solid fa-xmark"></i>
+        </button>
+        <div class="profile-popup-pic">
+            <img src="images/default-avatar.svg" alt="Profile Picture" id="popupProfileImg">
+        </div>
+        <div class="profile-popup-details">
+            <div class="profile-detail-row">
+                <span class="detail-label"><i class="fa-solid fa-id-badge"></i> Student ID</span>
+                <span class="detail-value" id="popupStudentId">2024-00123</span>
+            </div>
+            <div class="profile-detail-row">
+                <span class="detail-label"><i class="fa-solid fa-user"></i> Name</span>
+                <span class="detail-value" id="popupStudentName">Billie Eilish</span>
+            </div>
+            <div class="profile-detail-row">
+                <span class="detail-label"><i class="fa-solid fa-book"></i> Program</span>
+                <span class="detail-value" id="popupStudentProgram">BS Computer Science</span>
+            </div>
+            <div class="profile-detail-row">
+                <span class="detail-label"><i class="fa-solid fa-layer-group"></i> Year Level</span>
+                <span class="detail-value" id="popupStudentYear">2nd Year</span>
+            </div>
+        </div>
+    </div>
     
-    <main>
-        <aside class="sidebar" id="sidebar">
-            <ul class="sidebar-menu">
-                <li><a href="Pages/Attendance.html"><i class="fa-solid fa-calendar-check"></i>Attendance</a></li>
-                <li><a href="Pages/Course.html"><i class="fa-solid fa-book"></i>Course</a></li> 
-                <li><a href="Pages/Activity.html"><i class="fa-solid fa-clipboard-list"></i>Activities</a></li>
-                <li><a href="Pages/Quizzes.html"><i class="fa-solid fa-pen-to-square"></i>Quizzes</a></li>
-                <li><a href="Pages/Exams.html"><i class="fa-solid fa-graduation-cap"></i>Exams</a></li>
-            </ul>
-        </aside>
+    <!-- Security Warning Modal: Default Password Warning -->
+    <div class="pwd-warning-overlay" id="pwdWarningOverlay">
+        <div class="pwd-warning-modal">
+            <button class="pwd-warning-close" id="pwdWarningClose" title="Dismiss">&times;</button>
+            <div class="pwd-warning-icon">
+                <i class="fa-solid fa-shield-halved"></i>
+            </div>
+            <h3>Security Notice</h3>
+            <p>Welcome to TrackED! Your student account is currently using the initial default password (<code>1234</code>). For your security and privacy, please change your password now.</p>
+            <div class="pwd-warning-actions">
+                <a href="settings.html" class="btn-change-pwd">
+                    <i class="fa-solid fa-key"></i> Change Password Now
+                </a>
+                <button type="button" class="btn-later-pwd" id="pwdWarningLaterBtn">
+                    Remind Me Later
+                </button>
+            </div>
+        </div>
+    </div>
 
+    <main class="dashboard-main">
         <section class="dashboard-content">
-            <div class="dashboard-grid">
-                <div class="dashboard-box">
-                    <h2>Recent Academic Records</h2>
-                    <p>No recent records yet.</p>
-                </div>
+            <div class="dashboard-header">
+                <h2>My Enrolled Courses</h2>
+                <p>Select a course to view your attendance, activities, quizzes, and exam records.</p>
+            </div>
 
-                <div class="dashboard-box">
-                    <h2>Enrolled Courses</h2>
-                    <p>Total Courses: 8</p>
-                </div>
-
-                <div class="dashboard-box">
-                    <h2>Attendance</h2>
-                    <p>Overall Attendance: 96%</p>
-                </div>
-
-                <div class="dashboard-box">
-                    <h2>Overall Grade</h2>
-                    <p>91%</p>
-                </div>
+            <div class="tabs-grid" id="studentCoursesGrid">
+                <!-- Courses loaded dynamically via js/dashboard.js -->
             </div>
         </section>
     </main>
@@ -85,6 +109,9 @@
         </div>
     </footer>
 
+    <!-- Supabase CDN + Backend Adapter -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabaseClient.js"></script>
     <script src="js/dashboard.js"></script>
 </body>
 </html>

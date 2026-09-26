@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TrackED - Course Hub</title>
+    <link rel="icon" type="image/png" href="../images/TrackEd Logo 2.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/course.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+</head>
+<body>
+
+    <header>
+        <div class="header-left">
+            <a href="../dashboard.html" class="header-back-btn" title="Back to Courses">
+                <i class="fa-solid fa-arrow-left"></i>
+            </a>
+            <div class="left-menu">
+                <img src="../images/default-avatar.svg" alt="Profile Picture" class="profile" id="headerProfileImg">
+                <h4 id="headerStudentName">Billie Eilish</h4>
+            </div>
+        </div>
+
+        <div class="right-menu">
+            <div class="account">
+                <button class="account-btn" id="accountBtn">
+                    <i class="fa-solid fa-user"></i>
+                    Account
+                    <i class="fa-solid fa-caret-down"></i>
+                </button>
+
+                <ul class="dropdown-menu" id="dropdownMenu">
+                    <li><a href="../settings.html"><i class="fa-solid fa-gear"></i>Settings</a></li>
+                    <li><a href="../index.html"><i class="fa-solid fa-right-from-bracket"></i>Log Out</a></li>
+                </ul>
+            </div>
+        </div>
+    </header>
+
+    <main class="dashboard-main">
+        <section class="dashboard-content">
+            <div class="dashboard-header">
+                <h2 id="courseHeading">Programming Fundamentals</h2>
+                <p id="courseInstructor">Instructor: Prof. Billie Eilish • Select a module to view your records.</p>
+            </div>
+
+            <div class="tabs-grid">
+                <!-- ATTENDANCE -->
+                <a href="Attendance.html" class="tab-card tab-attendance" id="attendanceCard">
+                    <div class="tab-icon">
+                        <i class="fa-solid fa-calendar-check"></i>
+                    </div>
+                    <div class="tab-info">
+                        <h3>Attendance</h3>
+                        <p>View your attendance history and status for this course</p>
+                    </div>
+                    <i class="fa-solid fa-arrow-right tab-arrow"></i>
+                </a>
+
+                <!-- ACTIVITIES -->
+                <a href="Activity.html" class="tab-card tab-activities" id="activitiesCard">
+                    <div class="tab-icon">
+                        <i class="fa-solid fa-clipboard-list"></i>
+                    </div>
+                    <div class="tab-info">
+                        <h3>Activities</h3>
+                        <p>View activity tasks, maximum points, and your recorded scores</p>
+                    </div>
+                    <i class="fa-solid fa-arrow-right tab-arrow"></i>
+                </a>
+
+                <!-- QUIZZES -->
+                <a href="Quizzes.html" class="tab-card tab-quizzes" id="quizzesCard">
+                    <div class="tab-icon">
+                        <i class="fa-solid fa-pen-to-square"></i>
+                    </div>
+                    <div class="tab-info">
+                        <h3>Quizzes</h3>
+                        <p>View your quiz results and point breakdown for this course</p>
+                    </div>
+                    <i class="fa-solid fa-arrow-right tab-arrow"></i>
+                </a>
+
+                <!-- EXAMS -->
+                <a href="Exams.html" class="tab-card tab-exams" id="examsCard">
+                    <div class="tab-icon">
+                        <i class="fa-solid fa-graduation-cap"></i>
+                    </div>
+                    <div class="tab-info">
+                        <h3>Exams</h3>
+                        <p>View your preliminary, midterm, and final examination scores</p>
+                    </div>
+                    <i class="fa-solid fa-arrow-right tab-arrow"></i>
+                </a>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="left-side">
+            <p>TrackED.
+                <br>Track your academic progress with ease.
+            </p>
+            <p>&copy; 2026 TrackED. All Rights Reserved.</p>
+        </div>
+    </footer>
+
+    <!-- Supabase CDN + Backend Adapter -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../js/supabaseClient.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            // Load selected course
+            const activeCourse = localStorage.getItem("tracked_student_selected_course") || "Programming Fundamentals";
+            const activeCode   = localStorage.getItem("tracked_student_selected_course_code") || "CS101";
+            const instructor   = localStorage.getItem("tracked_student_selected_instructor") || "Prof. Billie Eilish";
+
+            const courseHeading    = document.getElementById("courseHeading");
+            const courseInstructor = document.getElementById("courseInstructor");
+            const headerStudentName = document.getElementById("headerStudentName");
+
+            const studentName = localStorage.getItem("tracked_student_name") || "Student";
+            if (headerStudentName) {
+                headerStudentName.textContent = studentName;
+            }
+
+            const headerProfileImg = document.getElementById("headerProfileImg");
+            const studentId = localStorage.getItem("tracked_student_id") || "";
+            const currentSidKey = studentId.trim().toLowerCase();
+            const studentAvatar = localStorage.getItem(`tracked_student_avatar_${currentSidKey}`) ||
+                                 (studentId === "2024-00123" ? "../images/profile.jpg" : "../images/default-avatar.svg");
+            if (headerProfileImg) {
+                headerProfileImg.src = studentAvatar;
+            }
+
+            if (courseHeading) {
+                courseHeading.textContent = activeCourse;
+            }
+            if (courseInstructor) {
+                courseInstructor.textContent = `${activeCode ? activeCode + " • " : ""}Instructor: ${instructor} • Select a module to view your records.`;
+            }
+
+            // Account dropdown
+            const accountBtn = document.getElementById("accountBtn");
+            const dropdownMenu = document.getElementById("dropdownMenu");
+
+            if (accountBtn && dropdownMenu) {
+                accountBtn.addEventListener("click", (e) => {
+                    e.stopPropagation();
+                    dropdownMenu.classList.toggle("show");
+                });
+
+                document.addEventListener("click", (event) => {
+                    if (!accountBtn.contains(event.target) && !dropdownMenu.contains(event.target)) {
+                        dropdownMenu.classList.remove("show");
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>

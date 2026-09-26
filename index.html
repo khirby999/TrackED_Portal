@@ -4,8 +4,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TrackED</title>
+    <title>TrackED - Student & Faculty Portal</title>
     <link rel="icon" type="image/png" href="images/TrackEd Logo 2.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
 </head>
@@ -19,40 +22,51 @@
         </div>
 
         <div class="right-menu">
-            <a href="mailto:TrackEDgmail.com">Contact</a>
+            <a href="mailto:TrackED@gmail.com">Contact</a>
             <a href="#">Help</a>
             <a href="#">About</a>
             <a href="#">Terms</a>
         </div>
     </header>
+
     <main>
         <div class="welcome-content">
+            <div class="portal-badge">
+                <i class="fa-solid fa-graduation-cap"></i> Academic Portal
+            </div>
             <h1>Welcome to TrackED</h1>
             <p>
-                Track you academic progress,
-                manage your records, and stay organized.
+                Track your academic progress, manage your records, and stay organized throughout your learning journey.
             </p>
         </div>
         
         <div class="login-container">
-            <h2>Login</h2>
+            <div class="login-header">
+                <h2>Sign In</h2>
+                <p class="login-subtitle">Enter your ID and password to access your portal</p>
+            </div>
 
-            <form action="#">
+            <!-- Error / Status Alert Box -->
+            <div id="loginAlert" class="login-alert" style="display: none;"></div>
+
+            <form id="loginForm">
                 <div class="input-group">
                     <i class="fa-solid fa-user icon"></i>
-                    <input type="text" id="username" placeholder="Student ID/Faculty ID" required>
+                    <input type="text" id="username" placeholder="Student ID / Faculty ID" autocomplete="username" required>
                 </div>
 
                 <div class="input-group">
                     <i class="fa-solid fa-lock icon"></i>
-                    <input type="password" id="password" placeholder="Enter your password" required>
-                    <i class="fa-solid fa-eye toggle password" id="togglePassword"></i>
+                    <input type="password" id="password" placeholder="Enter your password" autocomplete="current-password" required>
+                    <i class="fa-solid fa-eye toggle-password" id="togglePassword" title="Toggle password visibility"></i>
                 </div>
 
-                <a href="dashboard.html"><button type="button">Sign In</button></a>
+                <button type="submit" id="loginSubmitBtn" class="signin-btn">
+                    <span id="loginBtnText">Sign In</span> <i class="fa-solid fa-arrow-right"></i>
+                </button>
 
                 <p class="forgot-password">
-                    <a href="#">Forgot Password?</a>
+                    <a href="forgotPassword.html">Forgot Password?</a>
                 </p>
             </form>
         </div>
@@ -67,6 +81,9 @@
         </div>
     </footer>
 
+    <!-- Supabase CDN + Backend Adapter -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabaseClient.js"></script>
     <script src="js/index.js"></script>
 </body>
 

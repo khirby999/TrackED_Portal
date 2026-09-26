@@ -1,0 +1,1129 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background: #f5f7fb;
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    font-family: 'Poppins', Arial, Helvetica, sans-serif;
+}
+
+/* =========================================
+   HEADER
+========================================= */
+header {
+    background-color: rgb(6, 6, 207);
+    display: flex;
+    justify-content: space-between;
+    height: 70px;
+    align-items: center;
+    padding: 0 30px;
+    border-bottom: solid 5px yellow;
+    flex-shrink: 0;
+}
+
+.header-left-group {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.left-menu {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    padding: 6px 10px;
+    border-radius: 10px;
+    transition: background 0.2s ease;
+}
+
+.left-menu:hover {
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.profile {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid white;
+}
+
+.left-menu h4 {
+    font-size: 19px;
+    color: white;
+    font-weight: 600;
+}
+
+/* Add Student button beside profile in header */
+.add-student-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: #ffffff;
+    color: rgb(6, 6, 207);
+    border: none;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    transition: all 0.25s ease;
+}
+
+.add-student-btn i {
+    font-size: 13px;
+    color: rgb(6, 6, 207);
+    transition: transform 0.2s ease;
+}
+
+.add-student-btn:hover {
+    background: #eaf1ff;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22);
+}
+
+.add-student-btn:hover i {
+    transform: rotate(90deg);
+}
+
+.add-student-btn:active {
+    transform: translateY(0);
+}
+
+/* Remove Student button beside Add Student in header */
+.remove-student-header-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.15);
+    color: #ffffff;
+    border: 1.5px solid rgba(255, 255, 255, 0.35);
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    transition: all 0.25s ease;
+    backdrop-filter: blur(6px);
+}
+
+.remove-student-header-btn i {
+    font-size: 13px;
+    color: #fca5a5;
+    transition: transform 0.2s ease;
+}
+
+.remove-student-header-btn:hover {
+    background: #dc2626;
+    border-color: #dc2626;
+    color: #ffffff;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 14px rgba(220, 38, 38, 0.35);
+}
+
+.remove-student-header-btn:hover i {
+    color: #ffffff;
+    transform: scale(1.15);
+}
+
+.remove-student-header-btn:active {
+    transform: translateY(0);
+}
+
+/* =========================================
+   RIGHT MENU / ACCOUNT
+========================================= */
+.right-menu {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.account {
+    position: relative;
+}
+
+.account-btn {
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    color: white;
+    font-size: 14px;
+    font-family: inherit;
+    font-weight: 500;
+    cursor: pointer;
+    padding: 8px 16px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: 0.25s ease;
+}
+
+.account-btn:hover {
+    background: rgba(255, 255, 255, 0.25);
+}
+
+.dropdown-menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    display: none;
+    list-style: none;
+    background: white;
+    border-radius: 10px;
+    min-width: 170px;
+    padding: 8px 0;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+    border: 1px solid #e2e8f0;
+    z-index: 100;
+}
+
+.dropdown-menu li a {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+    color: #334155;
+    padding: 10px 18px;
+    font-size: 14px;
+    transition: 0.2s ease;
+}
+
+.dropdown-menu li a:hover {
+    background: #f1f5f9;
+    color: rgb(6, 6, 207);
+}
+
+.show {
+    display: block;
+}
+
+/* =========================================
+   TEACHER PROFILE POPUP
+========================================= */
+.profile-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.35);
+    z-index: 999;
+    animation: fadeIn 0.2s ease;
+}
+
+.profile-overlay.show {
+    display: block;
+}
+
+.profile-popup {
+    display: none;
+    position: fixed;
+    top: 85px;
+    left: 20px;
+    z-index: 1000;
+    background: #ffffff;
+    border-radius: 18px;
+    padding: 24px 22px 22px;
+    width: 290px;
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.2);
+    border: 1px solid #e2e8f0;
+    animation: slideDown 0.22s ease;
+}
+
+.profile-popup.show {
+    display: block;
+}
+
+.profile-popup-close {
+    position: absolute;
+    top: 12px;
+    right: 14px;
+    background: #f1f5f9;
+    border: none;
+    border-radius: 50%;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: #64748b;
+    font-size: 13px;
+    transition: background 0.2s ease, color 0.2s ease;
+}
+
+.profile-popup-close:hover {
+    background: #e2e8f0;
+    color: #1e293b;
+}
+
+.profile-popup-pic {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 16px;
+}
+
+.profile-popup-pic img {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid rgb(6, 6, 207);
+    box-shadow: 0 4px 12px rgba(6, 6, 207, 0.2);
+}
+
+.profile-popup-details {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.profile-detail-row {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 10px 12px;
+    background: #f8fafc;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+}
+
+.detail-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.detail-label i {
+    color: rgb(6, 6, 207);
+    font-size: 11px;
+}
+
+.detail-value {
+    font-size: 14px;
+    font-weight: 600;
+    color: #1e293b;
+}
+
+/* =========================================
+   MODAL DIALOGS (Add Student / Add Course)
+========================================= */
+.modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.5);
+    backdrop-filter: blur(3px);
+    z-index: 1050;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    animation: fadeIn 0.2s ease;
+}
+
+.modal-overlay.show {
+    display: flex;
+}
+
+.student-modal {
+    background: #ffffff;
+    border-radius: 20px;
+    width: 100%;
+    max-width: 440px;
+    padding: 28px;
+    position: relative;
+    box-shadow: 0 20px 45px rgba(0, 0, 0, 0.22);
+    border: 1px solid #e2e8f0;
+    animation: modalPop 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes modalPop {
+    from {
+        opacity: 0;
+        transform: scale(0.93) translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+.modal-close-btn {
+    position: absolute;
+    top: 18px;
+    right: 18px;
+    background: #f1f5f9;
+    border: none;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: #64748b;
+    font-size: 14px;
+    transition: all 0.2s ease;
+}
+
+.modal-close-btn:hover {
+    background: #e2e8f0;
+    color: #1e293b;
+    transform: rotate(90deg);
+}
+
+.modal-header {
+    text-align: center;
+    margin-bottom: 22px;
+}
+
+.modal-icon-badge {
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
+    background: #eff6ff;
+    color: rgb(6, 6, 207);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    margin: 0 auto 14px;
+    border: 1px solid #bfdbfe;
+}
+
+.modal-icon-badge.course-badge {
+    background: #f3e8ff;
+    color: #7c3aed;
+    border-color: #ddd6fe;
+}
+
+.modal-icon-badge.delete-badge {
+    background: #fee2e2;
+    color: #dc2626;
+    border-color: #fecaca;
+}
+
+.modal-icon-badge.edit-course-badge {
+    background: #e0e7ff;
+    color: #4338ca;
+    border-color: #c7d2fe;
+}
+
+.modal-header h3 {
+    font-size: 22px;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 6px;
+}
+
+.modal-header p {
+    font-size: 13px;
+    color: #64748b;
+    line-height: 1.5;
+}
+
+.modal-form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    text-align: left;
+}
+
+.form-group label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #334155;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+
+.form-group label i {
+    color: rgb(6, 6, 207);
+    font-size: 13px;
+}
+
+.form-group input,
+.form-group select {
+    width: 100%;
+    padding: 11px 14px;
+    border-radius: 10px;
+    border: 1.5px solid #cbd5e1;
+    font-family: inherit;
+    font-size: 14px;
+    color: #1e293b;
+    background: #ffffff;
+    transition: all 0.2s ease;
+    outline: none;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+    border-color: rgb(6, 6, 207);
+    box-shadow: 0 0 0 3px rgba(6, 6, 207, 0.15);
+}
+
+.modal-alert {
+    padding: 10px 14px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    animation: fadeIn 0.2s ease;
+}
+
+.modal-alert.success {
+    background: #ecfdf5;
+    color: #065f46;
+    border: 1px solid #a7f3d0;
+}
+
+.modal-alert.success i {
+    color: #059669;
+    font-size: 15px;
+}
+
+/* Real-time Student Found Card in Remove Modal */
+.student-found-card {
+    background: #f0fdf4;
+    border: 1.5px solid #86efac;
+    border-radius: 12px;
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    animation: fadeIn 0.2s ease;
+}
+
+.found-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: #dcfce7;
+    color: #15803d;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+}
+
+.found-details {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    overflow: hidden;
+}
+
+.found-tag {
+    font-size: 10px;
+    font-weight: 700;
+    color: #15803d;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+.found-name {
+    font-size: 15px;
+    font-weight: 700;
+    color: #14532d;
+    margin: 0;
+}
+
+.found-program {
+    font-size: 12px;
+    color: #166534;
+    margin: 0;
+}
+
+.student-not-found {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    color: #b91c1c;
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    animation: fadeIn 0.2s ease;
+}
+
+.student-not-found i {
+    font-size: 14px;
+    flex-shrink: 0;
+}
+
+.btn-danger:disabled {
+    background: #fca5a5 !important;
+    opacity: 0.65;
+    cursor: not-allowed;
+    box-shadow: none !important;
+    transform: none !important;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 6px;
+}
+
+.btn-cancel {
+    flex: 1;
+    padding: 12px;
+    border: 1.5px solid #e2e8f0;
+    background: #f8fafc;
+    color: #64748b;
+    border-radius: 10px;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-cancel:hover {
+    background: #f1f5f9;
+    color: #334155;
+}
+
+.btn-save {
+    flex: 2;
+    padding: 12px;
+    border: none;
+    background: rgb(6, 6, 207);
+    color: #ffffff;
+    border-radius: 10px;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    box-shadow: 0 4px 12px rgba(6, 6, 207, 0.25);
+    transition: all 0.2s ease;
+}
+
+.btn-save:hover {
+    background: #1d4ed8;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(6, 6, 207, 0.35);
+}
+
+.btn-save:active {
+    transform: translateY(0);
+}
+
+.btn-danger {
+    flex: 2;
+    padding: 12px;
+    border: none;
+    background: #dc2626;
+    color: #ffffff;
+    border-radius: 10px;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    box-shadow: 0 4px 12px rgba(220, 38, 38, 0.25);
+    transition: all 0.2s ease;
+}
+
+.btn-danger:hover {
+    background: #b91c1c;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(220, 38, 38, 0.35);
+}
+
+.btn-danger:active {
+    transform: translateY(0);
+}
+
+/* =========================================
+   MAIN CONTENT & DASHBOARD HEADER
+========================================= */
+.dashboard-main {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 40px 25px;
+}
+
+.dashboard-content {
+    width: 100%;
+    max-width: 880px;
+    margin: 0 auto;
+}
+
+.dashboard-header {
+    text-align: center;
+    margin-bottom: 35px;
+}
+
+.dashboard-header h2 {
+    font-size: 30px;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 8px;
+}
+
+.dashboard-header p {
+    font-size: 15px;
+    color: #64748b;
+}
+
+/* =========================================
+   TABS GRID & COURSE CARDS
+   (Exact match with student dashboard.html)
+========================================= */
+.tabs-grid {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 20px;
+    width: 100%;
+}
+
+.tab-card {
+    flex: 1 1 calc(50% - 20px);
+    max-width: calc(50% - 10px);
+    min-width: 290px;
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 22px 24px;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    text-decoration: none;
+    color: #1e293b;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+    border: 1.5px solid #e2e8f0;
+    transition: all 0.25s ease;
+    box-sizing: border-box;
+    cursor: pointer;
+}
+
+.tab-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 28px rgba(6, 6, 207, 0.12);
+    border-color: #3b82f6;
+}
+
+.tab-icon {
+    width: 54px;
+    height: 54px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    flex-shrink: 0;
+    transition: transform 0.25s ease;
+}
+
+.tab-card:hover .tab-icon {
+    transform: scale(1.08);
+}
+
+/* Distinct Course Card Colors */
+.tab-prog-fund .tab-icon {
+    background: #eff6ff;
+    color: #2563eb;
+}
+
+.tab-math .tab-icon {
+    background: #ecfdf5;
+    color: #059669;
+}
+
+/* Dynamic courses added via Add Course */
+.tab-custom .tab-icon {
+    background: #fdf2f8;
+    color: #db2777;
+}
+
+/* Add Course Card */
+.tab-add-course {
+    background: #fbfbfe;
+    border: 2px dashed #93c5fd;
+}
+
+.tab-add-course:hover {
+    border-color: rgb(6, 6, 207);
+    background: #f0f6ff;
+}
+
+.tab-add-course .tab-icon {
+    background: #e0e7ff;
+    color: rgb(6, 6, 207);
+}
+
+.tab-info {
+    flex: 1;
+}
+
+.tab-info h3 {
+    font-size: 18px;
+    font-weight: 600;
+    color: #1e293b;
+    margin-bottom: 4px;
+}
+
+.tab-info p {
+    font-size: 13px;
+    color: #64748b;
+    margin: 0;
+    line-height: 1.4;
+}
+
+.tab-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.delete-course-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    border: none;
+    background: transparent;
+    color: #94a3b8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+    z-index: 2;
+}
+
+.delete-course-btn:hover {
+    background: #fee2e2;
+    color: #dc2626;
+    transform: scale(1.1);
+}
+
+.edit-course-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    border: none;
+    background: transparent;
+    color: #94a3b8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+    z-index: 2;
+}
+
+.edit-course-btn:hover {
+    background: #e0e7ff;
+    color: #4338ca;
+    transform: scale(1.1);
+}
+
+.tab-arrow {
+    color: #94a3b8;
+    font-size: 16px;
+    transition: transform 0.25s ease, color 0.25s ease;
+}
+
+.tab-card:hover .tab-arrow {
+    transform: translateX(5px);
+    color: #2563eb;
+}
+
+.tab-add-course:hover .tab-arrow {
+    transform: scale(1.2);
+    color: rgb(6, 6, 207);
+}
+
+/* =========================================
+   FOOTER
+========================================= */
+footer {
+    background-color: rgb(6, 6, 207);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    height: 70px;
+    padding: 10px 30px;
+    border-top: solid 5px yellow;
+    flex-shrink: 0;
+}
+
+.left-side {
+    text-align: start;
+    text-decoration: none;
+    color: white;
+    font-size: 11px;
+    line-height: 1.5;
+}
+
+/* =========================================
+   SECURITY WARNING MODAL (Default Password)
+========================================= */
+.pwd-warning-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.55);
+    backdrop-filter: blur(4px);
+    z-index: 1100;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    animation: fadeIn 0.25s ease;
+}
+
+.pwd-warning-overlay.show {
+    display: flex;
+}
+
+.pwd-warning-modal {
+    background: #ffffff;
+    border-radius: 20px;
+    max-width: 440px;
+    width: 100%;
+    padding: 32px 28px 28px;
+    text-align: center;
+    position: relative;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+    border: 1px solid #e2e8f0;
+    animation: popUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes popUp {
+    from {
+        opacity: 0;
+        transform: scale(0.9) translateY(12px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+.pwd-warning-close {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    background: #f1f5f9;
+    border: none;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    font-size: 20px;
+    color: #64748b;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.pwd-warning-close:hover {
+    background: #e2e8f0;
+    color: #1e293b;
+}
+
+.pwd-warning-icon {
+    width: 68px;
+    height: 68px;
+    background: #fef3c7;
+    color: #d97706;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 30px;
+    margin: 0 auto 18px;
+    box-shadow: 0 8px 20px rgba(217, 119, 6, 0.2);
+}
+
+.pwd-warning-modal h3 {
+    font-size: 20px;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 10px;
+}
+
+.pwd-warning-modal p {
+    font-size: 14px;
+    color: #64748b;
+    line-height: 1.6;
+    margin-bottom: 24px;
+}
+
+.pwd-warning-modal code {
+    background: #f1f5f9;
+    color: #dc2626;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 6px;
+    font-size: 13px;
+}
+
+.pwd-warning-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.btn-change-pwd {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: rgb(6, 6, 207);
+    color: #ffffff;
+    text-decoration: none;
+    padding: 12px 20px;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 14px;
+    box-shadow: 0 4px 14px rgba(6, 6, 207, 0.3);
+    transition: all 0.2s ease;
+}
+
+.btn-change-pwd:hover {
+    background: #1d4ed8;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(6, 6, 207, 0.4);
+}
+
+.btn-later-pwd {
+    background: transparent;
+    border: none;
+    color: #64748b;
+    padding: 10px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: inherit;
+    transition: color 0.2s ease;
+}
+
+.btn-later-pwd:hover {
+    color: #1e293b;
+    text-decoration: underline;
+}
+
+/* =========================================
+   ANIMATIONS
+========================================= */
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+@keyframes slideDown {
+    from { opacity: 0; transform: translateY(-10px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* =========================================
+   RESPONSIVE DESIGN
+========================================= */
+@media (max-width: 768px) {
+    header {
+        height: auto;
+        padding: 12px 15px;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .header-left-group {
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .left-menu h4 {
+        font-size: 16px;
+    }
+
+    .profile {
+        width: 36px;
+        height: 36px;
+    }
+
+    .add-student-btn {
+        padding: 6px 12px;
+        font-size: 12px;
+    }
+
+    .remove-student-header-btn {
+        padding: 6px 12px;
+        font-size: 12px;
+    }
+
+    .dashboard-main {
+        padding: 25px 15px;
+    }
+
+    .dashboard-header h2 {
+        font-size: 24px;
+    }
+
+    .dashboard-header p {
+        font-size: 14px;
+    }
+
+    .tabs-grid {
+        flex-direction: column;
+        gap: 14px;
+    }
+
+    .tab-card {
+        flex: 1 1 100%;
+        max-width: 100%;
+        min-width: 0;
+        padding: 18px 20px;
+    }
+
+    .tab-icon {
+        width: 48px;
+        height: 48px;
+        font-size: 20px;
+    }
+
+    footer {
+        padding: 15px;
+    }
+}

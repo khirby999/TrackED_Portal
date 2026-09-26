@@ -34,23 +34,23 @@ header {
 }
 
 .header-back-btn {
-    width: 38px;
-    height: 38px;
     display: flex;
     align-items: center;
     justify-content: center;
+    width: 38px;
+    height: 38px;
     border-radius: 50%;
+    background: rgba(255, 255, 255, 0.15);
     color: white;
     text-decoration: none;
-    background: rgba(255, 255, 255, 0.15);
-    border: 1px solid rgba(255, 255, 255, 0.3);
     font-size: 15px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
     transition: all 0.2s ease;
 }
 
 .header-back-btn:hover {
     background: rgba(255, 255, 255, 0.28);
-    transform: translateX(-2px);
+    transform: translateX(-3px);
 }
 
 .left-menu {
@@ -176,7 +176,8 @@ header {
 }
 
 /* =========================================
-   TABS GRID & MODULE CARDS
+   TABS GRID & COURSE CARDS
+   (Exact match with dashboard.html)
 ========================================= */
 .tabs-grid {
     display: flex;
@@ -226,13 +227,18 @@ header {
     transform: scale(1.08);
 }
 
-/* Signature color schemes */
-.tab-attendance .tab-icon {
+/* Color codes per module */
+.tab-students .tab-icon {
     background: #eff6ff;
     color: #2563eb;
 }
 
-.tab-activities .tab-icon {
+.tab-attendance .tab-icon {
+    background: #ecfdf5;
+    color: #059669;
+}
+
+.tab-activity .tab-icon {
     background: #f5f3ff;
     color: #7c3aed;
 }
@@ -266,17 +272,19 @@ header {
 }
 
 .tab-arrow {
-    font-size: 16px;
     color: #94a3b8;
-    transition: transform 0.2s ease, color 0.2s ease;
+    font-size: 16px;
+    transition: transform 0.25s ease, color 0.25s ease;
 }
 
 .tab-card:hover .tab-arrow {
-    transform: translateX(4px);
-    color: rgb(6, 6, 207);
+    transform: translateX(5px);
+    color: #2563eb;
 }
 
-/* FOOTER */
+/* =========================================
+   FOOTER
+========================================= */
 footer {
     background-color: rgb(6, 6, 207);
     display: flex;
@@ -286,7 +294,6 @@ footer {
     padding: 10px 30px;
     border-top: solid 5px yellow;
     flex-shrink: 0;
-    margin-top: auto;
 }
 
 .left-side {
@@ -297,13 +304,55 @@ footer {
     line-height: 1.5;
 }
 
+/* =========================================
+   RESPONSIVE DESIGN
+========================================= */
 @media (max-width: 768px) {
-    .tab-card {
-        max-width: 100%;
-        flex: 1 1 100%;
+    header {
+        height: 60px;
+        padding: 0 15px;
     }
 
-    header {
-        padding: 0 15px;
+    .left-menu h4 {
+        font-size: 16px;
+    }
+
+    .profile {
+        width: 36px;
+        height: 36px;
+    }
+
+    .dashboard-main {
+        padding: 25px 15px;
+    }
+
+    .dashboard-header h2 {
+        font-size: 24px;
+    }
+
+    .dashboard-header p {
+        font-size: 14px;
+    }
+
+    .tabs-grid {
+        flex-direction: column;
+        gap: 14px;
+    }
+
+    .tab-card {
+        flex: 1 1 100%;
+        max-width: 100%;
+        min-width: 0;
+        padding: 18px 20px;
+    }
+
+    .tab-icon {
+        width: 48px;
+        height: 48px;
+        font-size: 20px;
+    }
+
+    footer {
+        padding: 15px;
     }
 }

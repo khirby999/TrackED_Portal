@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TrackED - Teacher Settings</title>
+    <link rel="icon" type="image/png" href="../images/TrackEd Logo 2.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/settings.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+</head>
+<body>
+
+    <!-- HEADER -->
+    <header>
+        <div class="left-menu" id="headerProfile">
+            <img src="../images/profile.jpg" alt="Teacher Profile Picture" class="profile" id="headerProfileImg">
+            <div>
+                <h4 id="headerUserName">Billie Eilish</h4>
+                <span class="user-role-tag" id="headerUserRole">Faculty / Teacher</span>
+            </div>
+        </div>
+
+        <div class="right-menu">
+            <a href="teacherDashboard.html" class="back-dashboard-btn" id="backDashboardBtn">
+                <i class="fa-solid fa-arrow-left"></i>
+                <span id="backDashboardText">Back to Teacher Dashboard</span>
+            </a>
+
+            <div class="account">
+                <button class="account-btn" id="accountBtn">
+                    <i class="fa-solid fa-user"></i>
+                    Account
+                    <i class="fa-solid fa-caret-down"></i>
+                </button>
+
+                <ul class="dropdown-menu" id="dropdownMenu">
+                    <li><a href="teacherSettings.html" class="active"><i class="fa-solid fa-gear"></i>Settings</a></li>
+                    <li><a href="../index.html"><i class="fa-solid fa-right-from-bracket"></i>Log Out</a></li>
+                </ul>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN SETTINGS CONTENT -->
+    <main class="settings-main">
+        <div class="settings-container">
+            <!-- PAGE TITLE -->
+            <div class="settings-page-header">
+                <div class="title-icon">
+                    <i class="fa-solid fa-gear"></i>
+                </div>
+                <div>
+                    <h1>Teacher Account Settings</h1>
+                    <p>Manage your faculty profile, change your password, and customize system preferences.</p>
+                </div>
+            </div>
+
+            <!-- SETTINGS WRAPPER (SIDEBAR + CONTENT) -->
+            <div class="settings-wrapper">
+                <!-- SIDEBAR TABS -->
+                <aside class="settings-sidebar">
+                    <nav class="settings-nav">
+                        <button type="button" class="nav-tab-btn active" data-tab="security" id="tabBtnSecurity">
+                            <div class="tab-btn-icon">
+                                <i class="fa-solid fa-shield-halved"></i>
+                            </div>
+                            <div class="tab-btn-text">
+                                <span class="tab-title">Password & Security</span>
+                                <span class="tab-sub">Change password & credentials</span>
+                            </div>
+                        </button>
+
+                        <button type="button" class="nav-tab-btn" data-tab="profile" id="tabBtnProfile">
+                            <div class="tab-btn-icon">
+                                <i class="fa-solid fa-user-gear"></i>
+                            </div>
+                            <div class="tab-btn-text">
+                                <span class="tab-title">Profile Information</span>
+                                <span class="tab-sub">Faculty details & contact</span>
+                            </div>
+                        </button>
+
+                        <button type="button" class="nav-tab-btn" data-tab="preferences" id="tabBtnPreferences">
+                            <div class="tab-btn-icon">
+                                <i class="fa-solid fa-sliders"></i>
+                            </div>
+                            <div class="tab-btn-text">
+                                <span class="tab-title">System Preferences</span>
+                                <span class="tab-sub">Display, density & format</span>
+                            </div>
+                        </button>
+                    </nav>
+                </aside>
+
+                <!-- TAB CONTENT PANELS -->
+                <section class="settings-content">
+
+                    <!-- =========================================
+                         TAB 1: PASSWORD & SECURITY
+                         ========================================= -->
+                    <div class="tab-panel active" id="panel-security">
+                        <div class="settings-card">
+                            <div class="card-header">
+                                <div class="card-header-icon security-badge">
+                                    <i class="fa-solid fa-lock"></i>
+                                </div>
+                                <div>
+                                    <h2>Change Account Password</h2>
+                                    <p>Choose a strong password with at least 8 characters to protect your faculty account.</p>
+                                </div>
+                            </div>
+
+                            <form id="changePasswordForm" class="settings-form">
+                                <div class="form-group">
+                                    <label for="currentPassword">
+                                        <i class="fa-solid fa-key"></i> Current Password
+                                    </label>
+                                    <div class="password-input-wrapper">
+                                        <input 
+                                            type="password" 
+                                            id="currentPassword" 
+                                            name="currentPassword" 
+                                            placeholder="Enter your current password" 
+                                            required
+                                            autocomplete="current-password"
+                                        >
+                                        <button type="button" class="toggle-pwd-btn" title="Toggle password visibility">
+                                            <i class="fa-solid fa-eye"></i>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="newPassword">
+                                        <i class="fa-solid fa-shield-halved"></i> New Password
+                                    </label>
+                                    <div class="password-input-wrapper">
+                                        <input 
+                                            type="password" 
+                                            id="newPassword" 
+                                            name="newPassword" 
+                                            placeholder="Enter your new password (min. 8 characters)" 
+                                            required
+                                            autocomplete="new-password"
+                                        >
+                                        <button type="button" class="toggle-pwd-btn" title="Toggle password visibility">
+                                            <i class="fa-solid fa-eye"></i>
+                                        </button>
+                                    </div>
+                                    <div class="pwd-requirements">
+                                        <p><i class="fa-solid fa-circle-info"></i> Password must be at least 8 characters long and include letters and numbers.</p>
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="confirmPassword">
+                                        <i class="fa-solid fa-check-double"></i> Confirm New Password
+                                    </label>
+                                    <div class="password-input-wrapper">
+                                        <input 
+                                            type="password" 
+                                            id="confirmPassword" 
+                                            name="confirmPassword" 
+                                            placeholder="Re-enter your new password" 
+                                            required
+                                            autocomplete="new-password"
+                                        >
+                                        <button type="button" class="toggle-pwd-btn" title="Toggle password visibility">
+                                            <i class="fa-solid fa-eye"></i>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- ALERTS -->
+                                <div class="alert-box success" id="pwdSuccessAlert" style="display: none;">
+                                    <i class="fa-solid fa-circle-check"></i>
+                                    <span id="pwdSuccessMsg">Your password has been changed successfully!</span>
+                                </div>
+
+                                <div class="alert-box error" id="pwdErrorAlert" style="display: none;">
+                                    <i class="fa-solid fa-circle-exclamation"></i>
+                                    <span id="pwdErrorMsg">Error message</span>
+                                </div>
+
+                                <div class="card-footer">
+                                    <button type="submit" class="btn-save" id="savePasswordBtn">
+                                        <i class="fa-solid fa-key"></i> Update Password
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- =========================================
+                         TAB 2: PROFILE INFORMATION
+                         ========================================= -->
+                    <div class="tab-panel" id="panel-profile">
+                        <div class="settings-card">
+                            <div class="card-header">
+                                <div class="card-header-icon profile-badge">
+                                    <i class="fa-solid fa-id-card"></i>
+                                </div>
+                                <div>
+                                    <h2>Faculty & Department Details</h2>
+                                    <p>View your official institutional record and update your recovery email address.</p>
+                                </div>
+                            </div>
+
+                            <!-- AVATAR UPLOAD ROW -->
+                            <div class="profile-avatar-row">
+                                <div class="avatar-preview">
+                                    <img src="../images/profile.jpg" alt="Profile Avatar" id="settingsAvatarPreview">
+                                </div>
+                                <div class="avatar-meta">
+                                    <h3 id="avatarDisplayName">Billie Eilish</h3>
+                                    <p id="avatarRoleText">Role: Faculty / Instructor</p>
+                                    <div class="avatar-actions">
+                                        <label for="avatarFileInput" class="btn-outline-upload">
+                                            <i class="fa-solid fa-camera"></i> Change Photo
+                                        </label>
+                                        <input type="file" id="avatarFileInput" accept="image/*" style="display: none;">
+                                        <button type="button" class="btn-text-danger" id="resetAvatarBtn">
+                                            <i class="fa-solid fa-trash-can"></i> Remove
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <form id="profileForm" class="settings-form">
+                                <div class="form-row-2">
+                                    <div class="form-group">
+                                        <label for="profileFullName">
+                                            <i class="fa-solid fa-user"></i> Full Name <span class="badge-locked"><i class="fa-solid fa-lock"></i> Locked</span>
+                                        </label>
+                                        <input 
+                                            type="text" 
+                                            id="profileFullName" 
+                                            value="Billie Eilish" 
+                                            readonly
+                                            class="input-readonly"
+                                        >
+                                        <span class="locked-field-hint">Official faculty name cannot be changed directly. Contact academic HR.</span>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label for="profileIdNumber">
+                                            <i class="fa-solid fa-id-badge"></i> Faculty ID <span class="badge-locked"><i class="fa-solid fa-lock"></i> Locked</span>
+                                        </label>
+                                        <input 
+                                            type="text" 
+                                            id="profileIdNumber" 
+                                            value="FAC-2026-001" 
+                                            readonly 
+                                            class="input-readonly"
+                                        >
+                                        <span class="locked-field-hint">Assigned institutional faculty number.</span>
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="profileDepartment">
+                                        <i class="fa-solid fa-building-columns"></i> Department <span class="badge-locked"><i class="fa-solid fa-lock"></i> Locked</span>
+                                    </label>
+                                    <input 
+                                        type="text" 
+                                        id="profileDepartment" 
+                                        value="College of Computer Studies" 
+                                        readonly
+                                        class="input-readonly"
+                                    >
+                                    <span class="locked-field-hint">Official faculty department assignment.</span>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="profileEmail">
+                                        <i class="fa-solid fa-envelope"></i> Recovery Email Address <span class="badge-editable"><i class="fa-solid fa-pen"></i> Editable</span>
+                                    </label>
+                                    <input 
+                                        type="email" 
+                                        id="profileEmail" 
+                                        value="" 
+                                        placeholder="e.g. yourname@gmail.com"
+                                    >
+                                    <div class="form-recovery-notice">
+                                        <i class="fa-solid fa-circle-info"></i>
+                                        <span><strong>Password Recovery Email:</strong> This email will be used to recover your teacher account if you forget your password. TrackED will send recovery instructions and a secure reset link to this address.</span>
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="profilePhone">
+                                        <i class="fa-solid fa-phone"></i> Contact / Phone Number <span class="badge-editable"><i class="fa-solid fa-pen"></i> Editable</span>
+                                    </label>
+                                    <input 
+                                        type="tel" 
+                                        id="profilePhone" 
+                                        value="" 
+                                        placeholder="e.g. +63 912 345 6789"
+                                    >
+                                </div>
+
+                                <div class="alert-box success" id="profileSuccessAlert" style="display: none;">
+                                    <i class="fa-solid fa-circle-check"></i>
+                                    <span>Faculty recovery email and contact details updated successfully!</span>
+                                </div>
+
+                                <div class="card-footer">
+                                    <button type="submit" class="btn-save" id="saveProfileBtn">
+                                        <i class="fa-solid fa-floppy-disk"></i> Save Recovery Email & Details
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- =========================================
+                         TAB 3: SYSTEM PREFERENCES (WITH TABLE ROW SPACING)
+                         ========================================= -->
+                    <div class="tab-panel" id="panel-preferences">
+                        <div class="settings-card">
+                            <div class="card-header">
+                                <div class="card-header-icon pref-badge">
+                                    <i class="fa-solid fa-sliders"></i>
+                                </div>
+                                <div>
+                                    <h2>System & Display Preferences</h2>
+                                    <p>Configure language, formatting, and grading table display settings.</p>
+                                </div>
+                            </div>
+
+                            <div class="settings-form">
+                                <div class="form-row-2">
+                                    <div class="form-group">
+                                        <label for="prefLanguage">
+                                            <i class="fa-solid fa-language"></i> Language
+                                        </label>
+                                        <select id="prefLanguage">
+                                            <option value="en">English (US)</option>
+                                            <option value="fil">Filipino</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label for="prefDateFormat">
+                                            <i class="fa-solid fa-calendar-days"></i> Date Format
+                                        </label>
+                                        <select id="prefDateFormat">
+                                            <option value="mm/dd/yyyy">MM/DD/YYYY (e.g. 09/25/2026)</option>
+                                            <option value="dd/mm/yyyy">DD/MM/YYYY (e.g. 25/09/2026)</option>
+                                            <option value="yyyy-mm-dd">YYYY-MM-DD (e.g. 2026-09-25)</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <!-- TABLE ROW SPACING (SHOWN FOR TEACHER) -->
+                                <div class="form-group">
+                                    <label for="prefTableView">
+                                        <i class="fa-solid fa-table-cells"></i> Table Row Spacing (Table Density)
+                                    </label>
+                                    <select id="prefTableView">
+                                        <option value="standard">Standard — Normal spacing (Balanced layout for grading & attendance)</option>
+                                        <option value="compact">Compact — Thinner rows (Fits more student rows on screen at once)</option>
+                                        <option value="comfortable">Comfortable — Wider rows (Larger tap areas for touchscreen devices)</option>
+                                    </select>
+                                    <span class="locked-field-hint">Controls how compact student tables appear across your attendance, activities, quizzes, and exam grade sheets.</span>
+                                </div>
+
+                                <div class="alert-box success" id="systemSuccessAlert" style="display: none;">
+                                    <i class="fa-solid fa-circle-check"></i>
+                                    <span>System preferences saved!</span>
+                                </div>
+
+                                <div class="card-footer">
+                                    <button type="button" class="btn-save" id="saveSystemPrefBtn">
+                                        <i class="fa-solid fa-check"></i> Save Preferences
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </section>
+            </div>
+        </div>
+    </main>
+
+    <!-- FOOTER -->
+    <footer>
+        <div class="left-side">
+            <p>TrackED.
+                <br>Track your academic progress with ease.
+            </p>
+            <p>&copy; 2026 TrackED. All Rights Reserved.</p>
+        </div>
+    </footer>
+
+    <!-- Supabase CDN + Backend Adapter -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../js/supabaseClient.js"></script>
+    <script src="../js/teacherSettings.js"></script>
+</body>
+</html>

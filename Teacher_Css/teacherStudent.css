@@ -1,0 +1,621 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background: #f5f7fb;
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    font-family: 'Poppins', Arial, Helvetica, sans-serif;
+}
+
+/* =========================================
+   HEADER
+========================================= */
+header {
+    background-color: rgb(6, 6, 207);
+    display: flex;
+    justify-content: space-between;
+    height: 70px;
+    align-items: center;
+    padding: 0 30px;
+    border-bottom: solid 5px yellow;
+    flex-shrink: 0;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.header-back-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.15);
+    color: white;
+    text-decoration: none;
+    font-size: 15px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    transition: all 0.2s ease;
+}
+
+.header-back-btn:hover {
+    background: rgba(255, 255, 255, 0.28);
+    transform: translateX(-3px);
+}
+
+.left-menu {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.profile {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid white;
+}
+
+.left-menu h4 {
+    font-size: 19px;
+    color: white;
+    font-weight: 600;
+}
+
+/* =========================================
+   RIGHT MENU / ACCOUNT
+========================================= */
+.right-menu {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.account {
+    position: relative;
+}
+
+.account-btn {
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    color: white;
+    font-size: 14px;
+    font-family: inherit;
+    font-weight: 500;
+    cursor: pointer;
+    padding: 8px 16px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: 0.25s ease;
+}
+
+.account-btn:hover {
+    background: rgba(255, 255, 255, 0.25);
+}
+
+.dropdown-menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    display: none;
+    list-style: none;
+    background: white;
+    border-radius: 10px;
+    min-width: 170px;
+    padding: 8px 0;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+    border: 1px solid #e2e8f0;
+    z-index: 100;
+}
+
+.dropdown-menu li a {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+    color: #334155;
+    padding: 10px 18px;
+    font-size: 14px;
+    transition: 0.2s ease;
+}
+
+.dropdown-menu li a:hover {
+    background: #f1f5f9;
+    color: rgb(6, 6, 207);
+}
+
+.show {
+    display: block;
+}
+
+/* =========================================
+   PAGE CONTENT
+========================================= */
+.page-main {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    padding: 35px 25px;
+}
+
+.student-content {
+    width: 100%;
+    max-width: 960px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+/* Page Header */
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.page-header-text h1 {
+    font-size: 28px;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 4px;
+}
+
+.page-header-text p {
+    font-size: 14px;
+    color: #64748b;
+}
+
+.back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 18px;
+    background: #ffffff;
+    color: #334155;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 10px;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+    transition: all 0.2s ease;
+}
+
+.back-btn:hover {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+    color: rgb(6, 6, 207);
+    transform: translateX(-3px);
+}
+
+/* Enroll Card */
+.enroll-card {
+    background: #ffffff;
+    border-radius: 16px;
+    border: 1.5px solid #e2e8f0;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.04);
+    padding: 24px 26px;
+}
+
+.section-title {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 1.5px solid #f1f5f9;
+}
+
+.section-icon {
+    width: 46px;
+    height: 46px;
+    border-radius: 12px;
+    background: #eff6ff;
+    color: #2563eb;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+}
+
+.section-title h2 {
+    font-size: 18px;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 2px;
+}
+
+.section-title p {
+    font-size: 13px;
+    color: #64748b;
+}
+
+.enroll-form {
+    display: flex;
+    align-items: flex-end;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.form-group {
+    flex: 1;
+    min-width: 220px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.form-group label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #334155;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.form-group label i {
+    color: rgb(6, 6, 207);
+}
+
+.form-group input {
+    padding: 10px 14px;
+    border-radius: 10px;
+    border: 1.5px solid #cbd5e1;
+    font-family: inherit;
+    font-size: 14px;
+    outline: none;
+    transition: all 0.2s ease;
+}
+
+.form-group input:focus {
+    border-color: rgb(6, 6, 207);
+    box-shadow: 0 0 0 3px rgba(6, 6, 207, 0.12);
+}
+
+.enroll-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 11px 22px;
+    background: rgb(6, 6, 207);
+    color: #ffffff;
+    border: none;
+    border-radius: 10px;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(6, 6, 207, 0.22);
+    transition: all 0.2s ease;
+    height: 44px;
+}
+
+.enroll-btn:hover {
+    background: #1d4ed8;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(6, 6, 207, 0.32);
+}
+
+/* Enrolled Students Card */
+.students-card {
+    background: #ffffff;
+    border-radius: 16px;
+    border: 1.5px solid #e2e8f0;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.04);
+    padding: 26px;
+}
+
+.students-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 20px;
+    border-bottom: 1.5px solid #f1f5f9;
+}
+
+.students-card-header h2 {
+    font-size: 20px;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 4px;
+}
+
+.students-card-header p {
+    font-size: 13px;
+    color: #64748b;
+}
+
+.student-count {
+    padding: 6px 14px;
+    background: #eff6ff;
+    color: #2563eb;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+/* Table */
+.table-container {
+    margin-top: 20px;
+    overflow-x: auto;
+}
+
+table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+thead th {
+    background: #f8fafc;
+    color: #475569;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 14px 18px;
+    text-align: left;
+    border-top: 1px solid #e2e8f0;
+    border-bottom: 2px solid #e2e8f0;
+}
+
+thead th:first-child {
+    border-top-left-radius: 10px;
+    border-left: 1px solid #e2e8f0;
+}
+
+thead th:last-child {
+    border-top-right-radius: 10px;
+    border-right: 1px solid #e2e8f0;
+}
+
+tbody td {
+    padding: 16px 18px;
+    font-size: 14px;
+    color: #1e293b;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+tbody td:first-child {
+    font-weight: 600;
+    color: #3b82f6;
+}
+
+tbody tr:hover td {
+    background: #fbfcfe;
+}
+
+.remove-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    background: #fff1f2;
+    color: #e11d48;
+    border: 1px solid #fecdd3;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.remove-btn:hover {
+    background: #e11d48;
+    color: #ffffff;
+    border-color: #e11d48;
+    transform: translateY(-1px);
+}
+
+.modal-alert {
+    padding: 10px 14px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    animation: fadeIn 0.2s ease;
+}
+
+.modal-alert.success {
+    background: #ecfdf5;
+    color: #065f46;
+    border: 1px solid #a7f3d0;
+}
+
+.modal-alert.success i {
+    color: #059669;
+    font-size: 15px;
+}
+
+.modal-alert.error {
+    background: #fef2f2;
+    color: #991b1b;
+    border: 1px solid #fecaca;
+}
+
+.modal-alert.error i {
+    color: #dc2626;
+    font-size: 15px;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* =========================================
+   ENROLL STUDENT PREVIEW CARD
+========================================= */
+.enroll-found-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: #f0fdf4;
+    border: 1.5px solid #86efac;
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-bottom: 4px;
+    animation: fadeIn 0.2s ease;
+}
+
+.enroll-found-icon {
+    width: 42px;
+    height: 42px;
+    background: #dcfce7;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.enroll-found-icon i {
+    font-size: 18px;
+    color: #16a34a;
+}
+
+.enroll-found-details {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.enroll-found-tag {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: #16a34a;
+    text-transform: uppercase;
+}
+
+.enroll-found-name {
+    font-size: 15px;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0;
+}
+
+.enroll-found-program {
+    font-size: 12px;
+    color: #64748b;
+    margin: 0;
+}
+
+.enroll-not-found {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #fef2f2;
+    border: 1.5px solid #fecaca;
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #991b1b;
+    margin-bottom: 4px;
+    animation: fadeIn 0.2s ease;
+}
+
+.enroll-not-found i {
+    color: #dc2626;
+    font-size: 15px;
+}
+
+.enroll-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+/* =========================================
+   FOOTER
+========================================= */
+footer {
+    background-color: rgb(6, 6, 207);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    height: 70px;
+    padding: 10px 30px;
+    border-top: solid 5px yellow;
+    flex-shrink: 0;
+}
+
+.left-side {
+    text-align: start;
+    text-decoration: none;
+    color: white;
+    font-size: 11px;
+    line-height: 1.5;
+}
+
+/* =========================================
+   RESPONSIVE DESIGN
+========================================= */
+@media (max-width: 768px) {
+    header {
+        height: 60px;
+        padding: 0 15px;
+    }
+
+    .left-menu h4 {
+        font-size: 16px;
+    }
+
+    .profile {
+        width: 36px;
+        height: 36px;
+    }
+
+    .page-main {
+        padding: 20px 15px;
+    }
+
+    .page-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .enroll-form {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .enroll-btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    footer {
+        padding: 15px;
+    }
+}

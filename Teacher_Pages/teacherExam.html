@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TrackED - Exams</title>
+    <link rel="icon" type="image/png" href="../images/TrackEd Logo 2.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../Teacher_Css/teacherExam.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+</head>
+<body>
+
+    <header>
+        <div class="left-menu">
+            <img src="../images/profile.jpg" alt="Profile Picture" class="profile">
+            <h4>Billie Eilish</h4>
+        </div>
+
+        <div class="right-menu">
+            <div class="account">
+                <button class="account-btn" id="accountBtn">
+                    <i class="fa-solid fa-user"></i>
+                    Account
+                    <i class="fa-solid fa-caret-down"></i>
+                </button>
+
+                <ul class="dropdown-menu" id="dropdownMenu">
+                    <li><a href="teacherSettings.html"><i class="fa-solid fa-gear"></i>Settings</a></li>
+                    <li><a href="../index.html"><i class="fa-solid fa-right-from-bracket"></i>Log Out</a></li>
+                </ul>
+            </div>
+        </div>
+    </header>
+
+    <!-- ADD EXAM MODAL -->
+    <div class="modal-overlay" id="addExamModalOverlay">
+        <div class="student-modal" id="addExamModal">
+            <button class="modal-close-btn" id="closeExamModalBtn" title="Close">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+
+            <div class="modal-header">
+                <div class="modal-icon-badge">
+                    <i class="fa-solid fa-file-circle-plus"></i>
+                </div>
+                <h3 id="addExamModalTitle">Add New Exam</h3>
+                <p>Enter the maximum score for this exam. The Exam # is generated automatically.</p>
+            </div>
+
+            <form id="addExamForm" class="modal-form">
+                <div class="form-group">
+                    <label>
+                        <i class="fa-solid fa-list-ol"></i> Exam Number
+                    </label>
+                    <div class="auto-generated-box" id="autoExamNameDisplay">
+                        <i class="fa-solid fa-bolt"></i> <span id="autoExamText">Exam 3</span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="examMaxScoreInput">
+                        <i class="fa-solid fa-bullseye"></i> Maximum Score (Points)
+                    </label>
+                    <input 
+                        type="number" 
+                        id="examMaxScoreInput" 
+                        placeholder="e.g. 100" 
+                        min="1" 
+                        max="1000" 
+                        required
+                    >
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn-cancel" id="cancelExamModalBtn">Cancel</button>
+                    <button type="submit" class="btn-save">
+                        <i class="fa-solid fa-plus"></i> Add Exam
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <main class="page-main">
+        <section class="exams-content">
+            <!-- PAGE HEADER -->
+            <div class="page-header">
+                <div class="page-header-text">
+                    <h1>Exams</h1>
+                    <p>Manage and record exam scores for students in this course.</p>
+                </div>
+                <a href="teacherCourse.html" class="back-btn">
+                    <i class="fa-solid fa-arrow-left"></i> Back to Course
+                </a>
+            </div>
+
+            <!-- COURSE INFORMATION -->
+            <div class="course-info-card">
+                <div class="course-icon">
+                    <i class="fa-solid fa-book"></i>
+                </div>
+                <div class="course-info-text">
+                    <h2 id="examCourseHeading">Programming Fundamentals</h2>
+                    <p>Enter the scores of students for every exam.</p>
+                </div>
+            </div>
+
+            <!-- ALERT BANNER -->
+            <div class="modal-alert success" id="examAlertSuccess" style="display: none; margin-bottom: 20px;">
+                <i class="fa-solid fa-circle-check"></i>
+                <span id="examAlertSuccessMsg">Exam created successfully!</span>
+            </div>
+
+            <!-- EXAM SCORES CARD -->
+            <div class="exams-card">
+                <div class="card-header">
+                    <div class="card-header-info">
+                        <h2>Student Exam Scores</h2>
+                        <p>Enter the score of each student for every exam.</p>
+                    </div>
+
+                    <button class="add-exam-btn" id="addExamBtn">
+                        <i class="fa-solid fa-plus"></i> Add Exam
+                    </button>
+                </div>
+
+                <div class="table-container">
+                    <table id="examTable">
+                        <thead id="examTableHead">
+                            <tr>
+                                <th>Student ID</th>
+                                <th>Student Name</th>
+                            </tr>
+                        </thead>
+
+                        <tbody id="examTableBody">
+                            <!-- Populated dynamically via js/teacherDashboard.js -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- SAVE BUTTON -->
+                <div class="save-container">
+                    <button class="save-btn" id="saveExamScoresBtn">
+                        <i class="fa-solid fa-floppy-disk"></i> Save Scores
+                    </button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="left-side">
+            <p>TrackED.
+                <br>Track your academic progress with ease.
+            </p>
+            <p>&copy; 2026 TrackED. All Rights Reserved.</p>
+        </div>
+    </footer>
+
+    <!-- Supabase CDN + Backend Adapter -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../js/supabaseClient.js"></script>
+    <script src="../js/teacherDashboard.js"></script>
+</body>
+</html>
