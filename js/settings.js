@@ -83,9 +83,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const queryTab  = urlParams.get("tab");
     const hashTab   = window.location.hash.replace("#", "");
 
-    if (queryTab && ["security", "profile", "preferences"].includes(queryTab)) {
+    if (queryTab && ["security", "profile"].includes(queryTab)) {
         switchTab(queryTab);
-    } else if (hashTab && ["security", "profile", "preferences"].includes(hashTab)) {
+    } else if (hashTab && ["security", "profile"].includes(hashTab)) {
         switchTab(hashTab);
     }
 
@@ -321,39 +321,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
             if (window.TrackED_DB && typeof window.TrackED_DB.updateAvatar === "function") {
                 window.TrackED_DB.updateAvatar("student", studentId, null);
-            }
-        });
-    }
-
-    // =========================================
-    // SYSTEM PREFERENCES HANDLER (LANGUAGE & DATE FORMAT ONLY)
-    // =========================================
-    const prefLanguage       = document.getElementById("prefLanguage");
-    const prefDateFormat     = document.getElementById("prefDateFormat");
-    const saveSystemPrefBtn  = document.getElementById("saveSystemPrefBtn");
-    const systemSuccessAlert = document.getElementById("systemSuccessAlert");
-
-    const savedLanguage = localStorage.getItem("tracked_student_language") || "en";
-    const savedDateFmt  = localStorage.getItem("tracked_student_date_format") || "mm/dd/yyyy";
-
-    if (prefLanguage)   prefLanguage.value = savedLanguage;
-    if (prefDateFormat) prefDateFormat.value = savedDateFmt;
-
-    if (saveSystemPrefBtn) {
-        saveSystemPrefBtn.addEventListener("click", () => {
-            if (prefLanguage)   localStorage.setItem("tracked_student_language", prefLanguage.value);
-            if (prefDateFormat) localStorage.setItem("tracked_student_date_format", prefDateFormat.value);
-
-            if (systemSuccessAlert) {
-                systemSuccessAlert.style.display = "flex";
-                const originalHtml = saveSystemPrefBtn.innerHTML;
-                saveSystemPrefBtn.innerHTML = `<i class="fa-solid fa-circle-check"></i> Saved!`;
-                saveSystemPrefBtn.style.backgroundColor = "#059669";
-                setTimeout(() => {
-                    systemSuccessAlert.style.display = "none";
-                    saveSystemPrefBtn.innerHTML = originalHtml;
-                    saveSystemPrefBtn.style.backgroundColor = "";
-                }, 2200);
             }
         });
     }

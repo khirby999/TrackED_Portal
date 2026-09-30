@@ -2,6 +2,41 @@ document.addEventListener("DOMContentLoaded", () => {
     // Mark current session as teacher
     localStorage.setItem("tracked_user_role", "teacher");
 
+    // =========================================
+    // LOAD LOGGED-IN TEACHER PROFILE & AVATAR
+    // =========================================
+    const currentTeacherName = localStorage.getItem("tracked_teacher_name") || "Billie Eilish";
+    const currentTeacherId   = localStorage.getItem("tracked_teacher_id") || "T-2024-0042";
+    const currentTeacherDept = localStorage.getItem("tracked_teacher_dept") || "College of Computer Studies";
+    const currentTidKey      = (currentTeacherId || "default").trim().toLowerCase().replace(/[^a-z0-9]/g, "_");
+    const defaultTeacherAvatar = "../images/default-avatar.svg";
+
+    // Clean blank avatar by default unless teacher explicitly uploaded a custom image
+    let rawTeacherAvatar = localStorage.getItem(`tracked_teacher_avatar_${currentTidKey}`) ||
+                          localStorage.getItem("tracked_teacher_avatar_data");
+    if (rawTeacherAvatar && (rawTeacherAvatar.includes("profile.jpg") || rawTeacherAvatar === "profile.jpg")) {
+        rawTeacherAvatar = null;
+        localStorage.removeItem(`tracked_teacher_avatar_${currentTidKey}`);
+        localStorage.removeItem("tracked_teacher_avatar_data");
+    }
+    const teacherAvatar = rawTeacherAvatar || defaultTeacherAvatar;
+
+    // Header updates across all teacher pages
+    const headerProfileImg  = document.getElementById("headerProfileImg");
+    const headerTeacherName = document.getElementById("headerTeacherName");
+    if (headerProfileImg)  headerProfileImg.src = teacherAvatar;
+    if (headerTeacherName) headerTeacherName.textContent = currentTeacherName;
+
+    // Popup profile card updates (on teacherDashboard.html)
+    const popupProfileImg  = document.getElementById("popupProfileImg");
+    const popupTeacherId   = document.getElementById("popupTeacherId");
+    const popupTeacherName = document.getElementById("popupTeacherName");
+    const popupTeacherDept = document.getElementById("popupTeacherDept");
+    if (popupProfileImg)  popupProfileImg.src         = teacherAvatar;
+    if (popupTeacherId)   popupTeacherId.textContent   = currentTeacherId;
+    if (popupTeacherName) popupTeacherName.textContent = currentTeacherName;
+    if (popupTeacherDept) popupTeacherDept.textContent = currentTeacherDept;
+
     // Fresh wipe to remove all mock students and mock courses requested by user
     if (localStorage.getItem("tracked_clean_slate_v3") !== "true") {
         localStorage.setItem("tracked_database_students", JSON.stringify([]));

@@ -83,9 +83,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const queryTab  = urlParams.get("tab");
     const hashTab   = window.location.hash.replace("#", "");
 
-    if (queryTab && ["security", "profile", "preferences"].includes(queryTab)) {
+    if (queryTab && ["security", "profile"].includes(queryTab)) {
         switchTab(queryTab);
-    } else if (hashTab && ["security", "profile", "preferences"].includes(hashTab)) {
+    } else if (hashTab && ["security", "profile"].includes(hashTab)) {
         switchTab(hashTab);
     }
 
@@ -246,11 +246,23 @@ document.addEventListener("DOMContentLoaded", () => {
     const headerProfileImg       = document.getElementById("headerProfileImg");
     const resetAvatarBtn         = document.getElementById("resetAvatarBtn");
 
-    const savedAvatar = localStorage.getItem("tracked_teacher_avatar_data") || localStorage.getItem("tracked_avatar_data");
-    if (savedAvatar) {
-        if (settingsAvatarPreview) settingsAvatarPreview.src = savedAvatar;
-        if (headerProfileImg)      headerProfileImg.src      = savedAvatar;
+    const defaultTeacherAvatar = "../images/default-avatar.svg";
+    const tidKey = (facultyId || "default").trim().toLowerCase().replace(/[^a-z0-9]/g, "_");
+
+    let savedAvatar = localStorage.getItem(`tracked_teacher_avatar_${tidKey}`) || 
+                      localStorage.getItem("tracked_teacher_avatar_data") || 
+                      localStorage.getItem("tracked_avatar_data");
+
+    // Clean out mock profile.jpg path if lingering
+    if (savedAvatar && (savedAvatar.includes("profile.jpg") || savedAvatar === "profile.jpg")) {
+        savedAvatar = null;
+        localStorage.removeItem(`tracked_teacher_avatar_${tidKey}`);
+        localStorage.removeItem("tracked_teacher_avatar_data");
     }
+
+    const currentTeacherAvatar = savedAvatar || defaultTeacherAvatar;
+    if (settingsAvatarPreview) settingsAvatarPreview.src = currentTeacherAvatar;
+    if (headerProfileImg)      headerProfileImg.src      = currentTeacherAvatar;
 
     if (avatarFileInput) {
         avatarFileInput.addEventListener("change", (e) => {
@@ -261,7 +273,13 @@ document.addEventListener("DOMContentLoaded", () => {
                     const dataUrl = event.target.result;
                     if (settingsAvatarPreview) settingsAvatarPreview.src = dataUrl;
                     if (headerProfileImg)      headerProfileImg.src      = dataUrl;
+                    localStorage.setItem(`tracked_teacher_avatar_${tidKey}`, dataUrl);
                     localStorage.setItem("tracked_teacher_avatar_data", dataUrl);
+
+                    // Sync to Supabase Cloud Database
+                    if (window.TrackED_DB && typeof window.TrackED_DB.updateAvatar === "function") {
+                        window.TrackED_DB.updateAvatar("teacher", facultyId, dataUrl);
+                    }
                 };
                 reader.readAsDataURL(file);
             }
@@ -270,47 +288,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (resetAvatarBtn) {
         resetAvatarBtn.addEventListener("click", () => {
-            const defaultAvatar = "../images/profile.jpg";
-            if (settingsAvatarPreview) settingsAvatarPreview.src = defaultAvatar;
-            if (headerProfileImg)      headerProfileImg.src      = defaultAvatar;
+            if (settingsAvatarPreview) settingsAvatarPreview.src = defaultTeacherAvatar;
+            if (headerProfileImg)      headerProfileImg.src      = defaultTeacherAvatar;
+            localStorage.removeItem(`tracked_teacher_avatar_${tidKey}`);
             localStorage.removeItem("tracked_teacher_avatar_data");
-        });
-    }
 
-    // =========================================
-    // SYSTEM PREFERENCES (WITH TABLE ROW SPACING)
-    // =========================================
-    const prefLanguage       = document.getElementById("prefLanguage");
-    const prefDateFormat     = document.getElementById("prefDateFormat");
-    const prefTableView      = document.getElementById("prefTableView");
-    const saveSystemPrefBtn  = document.getElementById("saveSystemPrefBtn");
-    const systemSuccessAlert = document.getElementById("systemSuccessAlert");
-
-    const savedLanguage = localStorage.getItem("tracked_teacher_language") || "en";
-    const savedDateFmt  = localStorage.getItem("tracked_teacher_date_format") || "mm/dd/yyyy";
-    const savedDensity  = localStorage.getItem("tracked_teacher_table_density") || "standard";
-
-    if (prefLanguage)   prefLanguage.value = savedLanguage;
-    if (prefDateFormat) prefDateFormat.value = savedDateFmt;
-    if (prefTableView)  prefTableView.value = savedDensity;
-
-    if (saveSystemPrefBtn) {
-        saveSystemPrefBtn.addEventListener("click", () => {
-            if (prefLanguage)   localStorage.setItem("tracked_teacher_language", prefLanguage.value);
-            if (prefDateFormat) localStorage.setItem("tracked_teacher_date_format", prefDateFormat.value);
-            if (prefTableView)  localStorage.setItem("tracked_teacher_table_density", prefTableView.value);
-
-            if (systemSuccessAlert) {
-                systemSuccessAlert.style.display = "flex";
-                const originalHtml = saveSystemPrefBtn.innerHTML;
-                saveSystemPrefBtn.innerHTML = `<i class="fa-solid fa-circle-check"></i> Saved!`;
-                saveSystemPrefBtn.style.backgroundColor = "#059669";
-                setTimeout(() => {
-                    systemSuccessAlert.style.display = "none";
-                    saveSystemPrefBtn.innerHTML = originalHtml;
-                    saveSystemPrefBtn.style.backgroundColor = "";
-                }, 2200);
+            // Sync avatar reset to Supabase Cloud Database
+            if (window.TrackED_DB && typeof window.TrackED_DB.updateAvatar === "function") {
+                window.TrackED_DB.updateAvatar("teacher", facultyId, null);
             }
         });
     }
 });
+

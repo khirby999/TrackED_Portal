@@ -209,6 +209,185 @@ const SUPABASE_CONFIG = {
         },
 
         /**
+         * Find a user (student or teacher) for account recovery by ID or Email
+         * @param {string} mode - "id" or "email"
+         * @param {string} value - the entered ID or Email
+         */
+        findUserForRecovery: async function (mode, value) {
+            const client = getClient();
+            const cleanVal = (value || "").trim();
+            if (!cleanVal) return { success: false, message: "Please enter an ID or Email." };
+
+            // 1. Check Supabase Cloud if available
+            if (client) {
+                try {
+                    if (mode === "id") {
+                        // Check teacher by teacher_id
+                        const { data: teacher } = await client
+                            .from("teachers")
+                            .select("teacher_id, name, department, role, email")
+                            .ilike("teacher_id", cleanVal)
+                            .limit(1);
+
+                        if (teacher && teacher.length > 0) {
+                            const t = teacher[0];
+                            return {
+                                success: true,
+                                role: "teacher",
+                                user: {
+                                    id: t.teacher_id,
+                                    name: t.name,
+                                    program: t.department || "Faculty Instructor",
+                                    email: t.email || ""
+                                }
+                            };
+                        }
+
+                        // Check student by student_id
+                        const { data: student } = await client
+                            .from("students")
+                            .select("student_id, name, first_name, middle_name, last_name, program, year_level, email")
+                            .ilike("student_id", cleanVal)
+                            .limit(1);
+
+                        if (student && student.length > 0) {
+                            const s = student[0];
+                            let displayName = s.name;
+                            if (!displayName && (s.first_name || s.last_name)) {
+                                const mi = s.middle_name ? s.middle_name.charAt(0).toUpperCase() + "." : "";
+                                displayName = mi ? `${s.last_name}, ${s.first_name} ${mi}` : `${s.last_name}, ${s.first_name}`;
+                            }
+                            return {
+                                success: true,
+                                role: "student",
+                                user: {
+                                    id: s.student_id,
+                                    name: displayName || "Student",
+                                    program: `${s.program || "BS Computer Science"}${s.year_level ? " • " + s.year_level : ""}`,
+                                    email: s.email || ""
+                                }
+                            };
+                        }
+                    } else {
+                        // Search by Email
+                        // Check teacher by email
+                        const { data: teacher } = await client
+                            .from("teachers")
+                            .select("teacher_id, name, department, role, email")
+                            .ilike("email", cleanVal)
+                            .limit(1);
+
+                        if (teacher && teacher.length > 0) {
+                            const t = teacher[0];
+                            return {
+                                success: true,
+                                role: "teacher",
+                                user: {
+                                    id: t.teacher_id,
+                                    name: t.name,
+                                    program: t.department || "Faculty Instructor",
+                                    email: t.email || ""
+                                }
+                            };
+                        }
+
+                        // Check student by email
+                        const { data: student } = await client
+                            .from("students")
+                            .select("student_id, name, first_name, middle_name, last_name, program, year_level, email")
+                            .ilike("email", cleanVal)
+                            .limit(1);
+
+                        if (student && student.length > 0) {
+                            const s = student[0];
+                            let displayName = s.name;
+                            if (!displayName && (s.first_name || s.last_name)) {
+                                const mi = s.middle_name ? s.middle_name.charAt(0).toUpperCase() + "." : "";
+                                displayName = mi ? `${s.last_name}, ${s.first_name} ${mi}` : `${s.last_name}, ${s.first_name}`;
+                            }
+                            return {
+                                success: true,
+                                role: "student",
+                                user: {
+                                    id: s.student_id,
+                                    name: displayName || "Student",
+                                    program: `${s.program || "BS Computer Science"}${s.year_level ? " • " + s.year_level : ""}`,
+                                    email: s.email || ""
+                                }
+                            };
+                        }
+                    }
+                } catch (err) {
+                    console.warn("[TrackED Backend] Cloud recovery lookup failed, checking local cache:", err);
+                }
+            }
+
+            // 2. Offline / Local fallback check
+            const teacherId = localStorage.getItem("tracked_teacher_id") || "T-2024-0042";
+            const teacherEmail = localStorage.getItem("tracked_teacher_recovery_email") || "";
+            const teacherName = localStorage.getItem("tracked_teacher_name") || "Eilish, Billie O.";
+
+            if (mode === "id" && cleanVal.toLowerCase() === teacherId.toLowerCase()) {
+                return {
+                    success: true,
+                    role: "teacher",
+                    user: {
+                        id: teacherId,
+                        name: teacherName,
+                        program: "College of Computer Studies • Faculty",
+                        email: teacherEmail
+                    }
+                };
+            }
+            if (mode === "email" && teacherEmail && cleanVal.toLowerCase() === teacherEmail.toLowerCase()) {
+                return {
+                    success: true,
+                    role: "teacher",
+                    user: {
+                        id: teacherId,
+                        name: teacherName,
+                        program: "College of Computer Studies • Faculty",
+                        email: teacherEmail
+                    }
+                };
+            }
+
+            // Check local students cache
+            let localStudents = [];
+            try {
+                localStudents = JSON.parse(localStorage.getItem("tracked_database_students") || "[]");
+            } catch (e) {}
+
+            const foundStudent = localStudents.find(s => {
+                if (mode === "id") {
+                    return s.id && s.id.trim().toLowerCase() === cleanVal.toLowerCase();
+                } else {
+                    return s.email && s.email.trim().toLowerCase() === cleanVal.toLowerCase();
+                }
+            });
+
+            if (foundStudent) {
+                return {
+                    success: true,
+                    role: "student",
+                    user: {
+                        id: foundStudent.id,
+                        name: foundStudent.name,
+                        program: `${foundStudent.program || "BS Computer Science"}${foundStudent.yearLevel ? " • " + foundStudent.yearLevel : ""}`,
+                        email: foundStudent.email || ""
+                    }
+                };
+            }
+
+            return {
+                success: false,
+                message: mode === "id" 
+                    ? `No account found with ID "${cleanVal}". Please check your Student or Faculty ID.`
+                    : `No account found registered with email "${cleanVal}".`
+            };
+        },
+
+        /**
          * Update password in Cloud & LocalStorage
          */
         updatePassword: async function (role, id, newPassword) {
@@ -263,14 +442,18 @@ const SUPABASE_CONFIG = {
                     }
                 }
             } else {
+                const tidKey = (id || "default").trim().toLowerCase().replace(/[^a-z0-9]/g, "_");
                 if (dataUrl) {
+                    localStorage.setItem(`tracked_teacher_avatar_${tidKey}`, dataUrl);
                     localStorage.setItem("tracked_teacher_avatar_data", dataUrl);
                 } else {
+                    localStorage.removeItem(`tracked_teacher_avatar_${tidKey}`);
                     localStorage.removeItem("tracked_teacher_avatar_data");
                 }
                 if (client) {
                     try {
                         await client.from("teachers").update({ avatar_data: dataUrl }).eq("teacher_id", id);
+                        console.log(`[TrackED Backend] Teacher ${id} avatar synced to Supabase Cloud! ☁️`);
                     } catch (e) {
                         console.warn("[TrackED Backend] Could not sync teacher avatar to cloud:", e);
                     }
@@ -1186,8 +1369,14 @@ const SUPABASE_CONFIG = {
             } else {
                 localStorage.removeItem("tracked_teacher_phone");
             }
-            if (teacher.avatar_data) {
+            const tid = teacher.teacher_id || teacher.id;
+            const tidKey = (tid || "default").trim().toLowerCase().replace(/[^a-z0-9]/g, "_");
+            if (teacher.avatar_data && !teacher.avatar_data.includes("profile.jpg")) {
+                localStorage.setItem(`tracked_teacher_avatar_${tidKey}`, teacher.avatar_data);
                 localStorage.setItem("tracked_teacher_avatar_data", teacher.avatar_data);
+            } else {
+                localStorage.removeItem(`tracked_teacher_avatar_${tidKey}`);
+                localStorage.removeItem("tracked_teacher_avatar_data");
             }
             if (teacher.password_changed) {
                 localStorage.setItem("tracked_teacher_password_changed", "true");

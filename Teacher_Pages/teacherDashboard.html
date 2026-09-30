@@ -16,8 +16,8 @@
     <header>
         <div class="header-left-group">
             <div class="left-menu" id="profileTrigger" title="View Profile">
-                <img src="../images/profile.jpg" alt="Teacher Profile Picture" class="profile">
-                <h4>Billie Eilish</h4>
+                <img src="../images/default-avatar.svg" alt="Teacher Profile Picture" class="profile" id="headerProfileImg">
+                <h4 id="headerTeacherName">Billie Eilish</h4>
             </div>
 
             <!-- Option beside teacher profile to add student with a + icon -->
@@ -58,24 +58,24 @@
             <i class="fa-solid fa-xmark"></i>
         </button>
         <div class="profile-popup-pic">
-            <img src="../images/profile.jpg" alt="Profile Picture">
+            <img src="../images/default-avatar.svg" alt="Profile Picture" id="popupProfileImg">
         </div>
         <div class="profile-popup-details">
             <div class="profile-detail-row">
                 <span class="detail-label"><i class="fa-solid fa-id-badge"></i> Faculty ID</span>
-                <span class="detail-value">T-2024-0042</span>
+                <span class="detail-value" id="popupTeacherId">T-2024-0042</span>
             </div>
             <div class="profile-detail-row">
                 <span class="detail-label"><i class="fa-solid fa-user"></i> Name</span>
-                <span class="detail-value">Billie Eilish</span>
+                <span class="detail-value" id="popupTeacherName">Billie Eilish</span>
             </div>
             <div class="profile-detail-row">
                 <span class="detail-label"><i class="fa-solid fa-building-columns"></i> Department</span>
-                <span class="detail-value">College of Computer Studies</span>
+                <span class="detail-value" id="popupTeacherDept">College of Computer Studies</span>
             </div>
             <div class="profile-detail-row">
                 <span class="detail-label"><i class="fa-solid fa-chalkboard-user"></i> Role</span>
-                <span class="detail-value">Faculty Instructor</span>
+                <span class="detail-value" id="popupTeacherRole">Faculty Instructor</span>
             </div>
         </div>
     </div>

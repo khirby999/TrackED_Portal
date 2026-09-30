@@ -54,7 +54,7 @@
                 </div>
                 <div>
                     <h1>Student Account Settings</h1>
-                    <p>Manage your student account profile, change your password, and customize preferences.</p>
+                    <p>Manage your student account profile and change your password.</p>
                 </div>
             </div>
 
@@ -80,16 +80,6 @@
                             <div class="tab-btn-text">
                                 <span class="tab-title">Profile Information</span>
                                 <span class="tab-sub">Personal details & contact</span>
-                            </div>
-                        </button>
-
-                        <button type="button" class="nav-tab-btn" data-tab="preferences" id="tabBtnPreferences">
-                            <div class="tab-btn-icon">
-                                <i class="fa-solid fa-sliders"></i>
-                            </div>
-                            <div class="tab-btn-text">
-                                <span class="tab-title">System Preferences</span>
-                                <span class="tab-sub">Display, language & format</span>
                             </div>
                         </button>
                     </nav>
@@ -313,59 +303,6 @@
                                     </button>
                                 </div>
                             </form>
-                        </div>
-                    </div>
-
-                    <!-- =========================================
-                         TAB 3: SYSTEM PREFERENCES
-                         ========================================= -->
-                    <div class="tab-panel" id="panel-preferences">
-                        <div class="settings-card">
-                            <div class="card-header">
-                                <div class="card-header-icon pref-badge">
-                                    <i class="fa-solid fa-sliders"></i>
-                                </div>
-                                <div>
-                                    <h2>System & Display Preferences</h2>
-                                    <p>Configure language, formatting, and portal display settings.</p>
-                                </div>
-                            </div>
-
-                            <div class="settings-form">
-                                <div class="form-row-2">
-                                    <div class="form-group">
-                                        <label for="prefLanguage">
-                                            <i class="fa-solid fa-language"></i> Language
-                                        </label>
-                                        <select id="prefLanguage">
-                                            <option value="en">English (US)</option>
-                                            <option value="fil">Filipino</option>
-                                        </select>
-                                    </div>
-
-                                    <div class="form-group">
-                                        <label for="prefDateFormat">
-                                            <i class="fa-solid fa-calendar-days"></i> Date Format
-                                        </label>
-                                        <select id="prefDateFormat">
-                                            <option value="mm/dd/yyyy">MM/DD/YYYY (e.g. 09/25/2026)</option>
-                                            <option value="dd/mm/yyyy">DD/MM/YYYY (e.g. 25/09/2026)</option>
-                                            <option value="yyyy-mm-dd">YYYY-MM-DD (e.g. 2026-09-25)</option>
-                                        </select>
-                                    </div>
-                                </div>
-
-                                <div class="alert-box success" id="systemSuccessAlert" style="display: none;">
-                                    <i class="fa-solid fa-circle-check"></i>
-                                    <span>System preferences saved!</span>
-                                </div>
-
-                                <div class="card-footer">
-                                    <button type="button" class="btn-save" id="saveSystemPrefBtn">
-                                        <i class="fa-solid fa-check"></i> Save Preferences
-                                    </button>
-                                </div>
-                            </div>
                         </div>
                     </div>
 
