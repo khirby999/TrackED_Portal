@@ -988,7 +988,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     if (confirmDeleteBtn) {
-        confirmDeleteBtn.addEventListener("click", () => {
+        confirmDeleteBtn.addEventListener("click", async () => {
             if (!courseToDeleteName || !courseToDeleteCard) {
                 closeDeleteModalFunc();
                 return;
@@ -1007,7 +1007,9 @@ document.addEventListener("DOMContentLoaded", () => {
             saveTeacherCourses(customCourses);
 
             // Clean up course-specific data keys
+            const delNameLower = courseToDeleteName.trim().toLowerCase();
             localStorage.removeItem(`tracked_enrolled_${courseToDeleteName}`);
+            localStorage.removeItem(`tracked_enrolled_${delNameLower}`);
             localStorage.removeItem(`tracked_course_activities_${courseToDeleteName}`);
             localStorage.removeItem(`tracked_activity_scores_${courseToDeleteName}`);
             localStorage.removeItem(`tracked_course_quizzes_${courseToDeleteName}`);
@@ -1016,12 +1018,36 @@ document.addEventListener("DOMContentLoaded", () => {
             localStorage.removeItem(`tracked_exam_scores_${courseToDeleteName}`);
             localStorage.removeItem(`tracked_course_attendance_${courseToDeleteName}`);
 
+            // Also clean up teacher-scoped keys
+            const currentTidKey = (localStorage.getItem("tracked_teacher_id") || "T-2024-0042").toLowerCase().replace(/[^a-z0-9]/g, "_");
+            localStorage.removeItem(`tracked_enrolled_${currentTidKey}_${courseToDeleteName}`);
+            localStorage.removeItem(`tracked_course_activities_${currentTidKey}_${courseToDeleteName}`);
+            localStorage.removeItem(`tracked_activity_scores_${currentTidKey}_${courseToDeleteName}`);
+            localStorage.removeItem(`tracked_course_quizzes_${currentTidKey}_${courseToDeleteName}`);
+            localStorage.removeItem(`tracked_quiz_scores_${currentTidKey}_${courseToDeleteName}`);
+            localStorage.removeItem(`tracked_course_exams_${currentTidKey}_${courseToDeleteName}`);
+            localStorage.removeItem(`tracked_exam_scores_${currentTidKey}_${courseToDeleteName}`);
+            localStorage.removeItem(`tracked_course_attendance_${currentTidKey}_${courseToDeleteName}`);
+
+            // Remove this deleted course from ALL student-scoped cached course lists
+            Object.keys(localStorage).forEach(key => {
+                if (key.startsWith("tracked_student_courses_")) {
+                    try {
+                        const list = JSON.parse(localStorage.getItem(key) || "[]");
+                        if (Array.isArray(list)) {
+                            const updatedList = list.filter(c => (c.name || "").trim().toLowerCase() !== delNameLower);
+                            localStorage.setItem(key, JSON.stringify(updatedList));
+                        }
+                    } catch(e) {}
+                }
+            });
+
             // Ensure no legacy blacklist entry lingers
             localStorage.removeItem("tracked_deleted_courses");
 
             // Sync deletion to Supabase Cloud if connected
             if (window.TrackED_DB && typeof window.TrackED_DB.deleteCourse === "function") {
-                window.TrackED_DB.deleteCourse(courseToDeleteName);
+                await window.TrackED_DB.deleteCourse(courseToDeleteName);
             }
 
             closeDeleteModalFunc();

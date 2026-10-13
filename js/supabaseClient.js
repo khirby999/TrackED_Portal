@@ -450,12 +450,11 @@ const SUPABASE_CONFIG = {
             const client = getClient();
             const sidKey = (id || "").trim().toLowerCase();
             if (role === "student") {
+                localStorage.removeItem("tracked_student_avatar_data");
                 if (dataUrl) {
                     localStorage.setItem(`tracked_student_avatar_${sidKey}`, dataUrl);
-                    localStorage.setItem("tracked_student_avatar_data", dataUrl);
                 } else {
                     localStorage.removeItem(`tracked_student_avatar_${sidKey}`);
-                    localStorage.removeItem("tracked_student_avatar_data");
                 }
                 if (client) {
                     try {
@@ -866,11 +865,70 @@ const SUPABASE_CONFIG = {
             if (!client) return false;
             try {
                 const teacherId = (localStorage.getItem("tracked_teacher_id") || "T-2024-0042").trim();
-                const { error } = await client.from("courses").delete().match({
-                    course_name: courseName.trim(),
-                    teacher_id: teacherId
-                });
-                if (error) throw error;
+                const cleanName = (courseName || "").trim();
+
+                // 1. Resolve exact course_id (check this teacher first, then any teacher)
+                let courseId = await this._getCourseId(cleanName);
+                if (!courseId) {
+                    const { data: cData } = await client.from("courses").select("course_id").ilike("course_name", cleanName).limit(1);
+                    if (cData && cData.length > 0) courseId = cData[0].course_id;
+                }
+
+                if (courseId) {
+                    // Explicitly clean child tables to prevent foreign key constraint violations
+                    try {
+                        const { data: acts } = await client.from("activities").select("activity_id").eq("course_id", courseId);
+                        if (acts && acts.length > 0) {
+                            const aIds = acts.map(a => a.activity_id);
+                            await client.from("activity_scores").delete().in("activity_id", aIds);
+                            await client.from("activities").delete().eq("course_id", courseId);
+                        }
+                    } catch(e) {}
+
+                    try {
+                        const { data: qzs } = await client.from("quizzes").select("quiz_id").eq("course_id", courseId);
+                        if (qzs && qzs.length > 0) {
+                            const qIds = qzs.map(q => q.quiz_id);
+                            await client.from("quiz_scores").delete().in("quiz_id", qIds);
+                            await client.from("quizzes").delete().eq("course_id", courseId);
+                        }
+                    } catch(e) {}
+
+                    try {
+                        const { data: exms } = await client.from("exams").select("exam_id").eq("course_id", courseId);
+                        if (exms && exms.length > 0) {
+                            const xIds = exms.map(x => x.exam_id);
+                            await client.from("exam_scores").delete().in("exam_id", xIds);
+                            await client.from("exams").delete().eq("course_id", courseId);
+                        }
+                    } catch(e) {}
+
+                    try {
+                        await client.from("attendance").delete().eq("course_id", courseId);
+                    } catch(e) {}
+
+                    try {
+                        // CRITICAL: Delete enrollments so students are immediately disassociated from this course
+                        await client.from("course_enrollments").delete().eq("course_id", courseId);
+                    } catch(e) {}
+
+                    // Finally delete the course itself
+                    const { error: delErr } = await client.from("courses").delete().eq("course_id", courseId);
+                    if (delErr) {
+                        console.warn("[TrackED Backend] Error deleting course by ID:", delErr);
+                    } else {
+                        console.log(`[TrackED Backend] Course "${cleanName}" (ID ${courseId}) completely deleted from Supabase Cloud! 🗑️`);
+                        return true;
+                    }
+                }
+
+                // 2. Fallback: match by course_name case-insensitively and teacher_id
+                let delQuery = client.from("courses").delete().ilike("course_name", cleanName);
+                if (teacherId) {
+                    delQuery = delQuery.ilike("teacher_id", teacherId);
+                }
+                const { error: err2 } = await delQuery;
+                if (err2) throw err2;
                 console.log(`[TrackED Backend] Course "${courseName}" deleted from Supabase Cloud! 🗑️`);
                 return true;
             } catch (e) {
@@ -1261,12 +1319,16 @@ const SUPABASE_CONFIG = {
                             if (Array.isArray(stCourses)) dbCourses = stCourses;
                         }
                     }
-                    if (dbCourses.length > 0) {
-                        const mappedCourses = dbCourses.map(c => ({
-                            code: c.course_code,
-                            name: c.course_name
-                        }));
-                        localStorage.setItem("tracked_teacher_courses", JSON.stringify(mappedCourses));
+                    const sidLower = (currentSid || "").trim().toLowerCase();
+                    const mappedCourses = dbCourses.map(c => ({
+                        code: c.course_code || "CS",
+                        name: c.course_name,
+                        instructor: "Instructor",
+                        icon: "fa-graduation-cap",
+                        colorClass: "tab-course"
+                    }));
+                    if (sidLower) {
+                        localStorage.setItem(`tracked_student_courses_${sidLower}`, JSON.stringify(mappedCourses));
                     }
                 }
 
@@ -1487,10 +1549,12 @@ const SUPABASE_CONFIG = {
             }
             localStorage.setItem("tracked_student_password", localStorage.getItem(`tracked_student_pwd_${sidKey}`) || defaultPwd);
 
-            // Sync cloud avatar to local if available
+            // Sync cloud avatar to local if available, or clean up if none
+            localStorage.removeItem("tracked_student_avatar_data");
             if (student.avatar_data) {
                 localStorage.setItem(`tracked_student_avatar_${sidKey}`, student.avatar_data);
-                localStorage.setItem("tracked_student_avatar_data", student.avatar_data);
+            } else if (sidKey !== "2024-00123") {
+                localStorage.removeItem(`tracked_student_avatar_${sidKey}`);
             }
 
             const isChanged = (student.password_changed === true) || (localStorage.getItem(`tracked_student_pwd_changed_${sidKey}`) === "true");

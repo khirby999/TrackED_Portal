@@ -106,10 +106,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // 1. Check student-scoped cached course list first
         const studentScoped = localStorage.getItem(`tracked_student_courses_${sid}`);
-        if (studentScoped) {
+        if (studentScoped !== null) {
             try {
                 const list = JSON.parse(studentScoped);
-                if (Array.isArray(list) && list.length > 0) {
+                if (Array.isArray(list)) {
                     return list;
                 }
             } catch(e) {}
@@ -224,9 +224,10 @@ document.addEventListener("DOMContentLoaded", () => {
         if (window.TrackED_DB && typeof window.TrackED_DB.getStudentEnrolledCourses === "function") {
             try {
                 const sid = (currentStudentId || "").trim();
+                const sidLower = sid.toLowerCase();
                 const cloudCourses = await window.TrackED_DB.getStudentEnrolledCourses(sid);
-                if (cloudCourses && cloudCourses.length > 0) {
-                    const sidLower = sid.toLowerCase();
+                
+                if (Array.isArray(cloudCourses)) {
                     const studentCourseList = cloudCourses.map(cc => ({
                         code: cc.code || "CS",
                         name: cc.name,
@@ -235,8 +236,27 @@ document.addEventListener("DOMContentLoaded", () => {
                         colorClass: "tab-course"
                     }));
 
-                    // Save to student-scoped cache ONLY (never pollute teacher course lists)
+                    // Save to student-scoped cache (reflects cloud truth 1:1, including empty list if all courses deleted)
                     localStorage.setItem(`tracked_student_courses_${sidLower}`, JSON.stringify(studentCourseList));
+
+                    // Clean up any stale tracked_enrolled keys for courses student is no longer in
+                    const activeCloudNames = new Set(cloudCourses.map(c => (c.name || "").trim().toLowerCase()));
+                    Object.keys(localStorage).forEach(k => {
+                        if (k.startsWith("tracked_enrolled_")) {
+                            const cName = k.replace("tracked_enrolled_", "").trim().toLowerCase();
+                            if (!activeCloudNames.has(cName)) {
+                                try {
+                                    let enrollList = JSON.parse(localStorage.getItem(k) || "[]");
+                                    if (Array.isArray(enrollList)) {
+                                        const filtered = enrollList.filter(s => s && s.id && s.id.trim().toLowerCase() !== sidLower);
+                                        if (filtered.length !== enrollList.length) {
+                                            localStorage.setItem(k, JSON.stringify(filtered));
+                                        }
+                                    }
+                                } catch(e) {}
+                            }
+                        }
+                    });
 
                     cloudCourses.forEach(cc => {
                         const enrollKey = `tracked_enrolled_${cc.name}`;
@@ -268,6 +288,15 @@ document.addEventListener("DOMContentLoaded", () => {
     // Re-render when background two-way sync finishes
     window.addEventListener("tracked_sync_completed", () => {
         loadStudentCourses();
+    });
+
+    // Real-time multi-tab sync: if teacher deletes/modifies course in another tab, update student immediately
+    window.addEventListener("storage", (e) => {
+        if (!e.key) return;
+        const sidLower = (currentStudentId || "").trim().toLowerCase();
+        if (e.key === `tracked_student_courses_${sidLower}` || e.key.startsWith("tracked_enrolled_")) {
+            loadStudentCourses();
+        }
     });
 
     // =========================================

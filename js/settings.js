@@ -257,10 +257,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const sidKey = studentId.trim().toLowerCase();
     const defaultStudentAvatar = (studentId === "2024-00123") ? "images/profile.jpg" : "images/default-avatar.svg";
     
-    // Check per-student avatar first, then general key, then fallback to default
-    const savedAvatar = localStorage.getItem(`tracked_student_avatar_${sidKey}`) ||
-                        localStorage.getItem("tracked_student_avatar_data") ||
-                        defaultStudentAvatar;
+    // Check per-student avatar strictly (never fall back to a shared key that leaks another student's photo)
+    const savedAvatar = localStorage.getItem(`tracked_student_avatar_${sidKey}`) || defaultStudentAvatar;
 
     if (settingsAvatarPreview) settingsAvatarPreview.src = savedAvatar;
     if (headerProfileImg)      headerProfileImg.src      = savedAvatar;
@@ -306,9 +304,9 @@ document.addEventListener("DOMContentLoaded", () => {
                     if (settingsAvatarPreview) settingsAvatarPreview.src = dataUrl;
                     if (headerProfileImg)      headerProfileImg.src      = dataUrl;
 
-                    // 1. Save locally per-student
+                    // 1. Save locally per-student strictly
                     localStorage.setItem(`tracked_student_avatar_${sidKey}`, dataUrl);
-                    localStorage.setItem("tracked_student_avatar_data", dataUrl);
+                    localStorage.removeItem("tracked_student_avatar_data");
 
                     // 2. Sync to Supabase Cloud Database
                     if (window.TrackED_DB && typeof window.TrackED_DB.updateAvatar === "function") {
