@@ -86,12 +86,14 @@
                 let exams     = [];
                 let scoresMap = {};
 
-                const examRaw = localStorage.getItem(examsKey);
+                const examRaw = localStorage.getItem(examsKey) ||
+                                localStorage.getItem(`tracked_course_exams_${activeCourse.trim().toLowerCase()}`);
                 if (examRaw) {
                     try { exams = JSON.parse(examRaw) || []; } catch(e) {}
                 }
 
-                const scoreRaw = localStorage.getItem(scoresKey);
+                const scoreRaw = localStorage.getItem(scoresKey) ||
+                                 localStorage.getItem(`tracked_exam_scores_${activeCourse.trim().toLowerCase()}`);
                 if (scoreRaw) {
                     try { scoresMap = JSON.parse(scoreRaw) || {}; } catch(e) {}
                 }
@@ -119,13 +121,28 @@
                 // If teacher created exams for this course, render only the exams where a score was recorded
                 if (exams.length > 0) {
                     exams.forEach(ex => {
-                        const sc = studentScores[ex.num];
+                        const sc = studentScores[ex.num] !== undefined ? studentScores[ex.num] : studentScores[String(ex.num)];
                         const hasScore = (sc !== undefined && sc !== null && sc !== "");
                         if (hasScore) {
                             records.push({
                                 number: ex.name || `Exam ${ex.num}`,
                                 date: getPersistentExamDate(ex),
                                 score: `${sc} / ${ex.maxScore}`
+                            });
+                        }
+                    });
+                }
+
+                // Fallback: if exam definitions list is empty, but student has scores recorded in scoresMap
+                if (records.length === 0 && Object.keys(studentScores).length > 0) {
+                    Object.keys(studentScores).sort((a, b) => Number(a) - Number(b)).forEach(num => {
+                        const sc = studentScores[num];
+                        if (sc !== undefined && sc !== null && sc !== "") {
+                            const dateVal = localStorage.getItem(`tracked_exam_date_${activeCourse}_${num}`) || "Recorded";
+                            records.push({
+                                number: `Exam ${num}`,
+                                date: dateVal,
+                                score: `${sc}`
                             });
                         }
                     });

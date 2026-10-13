@@ -135,14 +135,31 @@ const SUPABASE_CONFIG = {
             }
 
             // 2. Offline / Local Fallback Mode
+            let localTeachers = [];
+            try {
+                localTeachers = JSON.parse(localStorage.getItem("tracked_database_teachers") || "[]");
+            } catch (e) {}
+
             const savedTeacherPwd = localStorage.getItem("tracked_teacher_password") || DEFAULT_TEACHER.password;
             const savedTeacherEmail = localStorage.getItem("tracked_teacher_recovery_email") || DEFAULT_TEACHER.email || "";
-            const isTeacherMatch = (
+
+            // Check default teacher or any custom teacher cached from cloud
+            let matchedTeacher = localTeachers.find(t => 
+                (t.teacher_id && t.teacher_id.toLowerCase() === inputId.toLowerCase()) || 
+                (t.email && t.email.toLowerCase() === inputId.toLowerCase())
+            );
+
+            if (matchedTeacher && matchedTeacher.password === inputPwd) {
+                this._setTeacherSession(matchedTeacher);
+                return { success: true, role: "teacher", user: matchedTeacher };
+            }
+
+            const isDefaultTeacherMatch = (
                 inputId.toLowerCase() === DEFAULT_TEACHER.id.toLowerCase() || 
                 (savedTeacherEmail && inputId.toLowerCase() === savedTeacherEmail.toLowerCase())
             ) && inputPwd === savedTeacherPwd;
 
-            if (isTeacherMatch) {
+            if (isDefaultTeacherMatch) {
                 const teacherObj = {
                     ...DEFAULT_TEACHER,
                     email: savedTeacherEmail,
@@ -573,17 +590,18 @@ const SUPABASE_CONFIG = {
                 }
             }
 
-            // Merge local teacher courses if cloud returned empty or offline
-            const localTeacherCourses = JSON.parse(localStorage.getItem("tracked_teacher_courses") || "[]");
-            localTeacherCourses.forEach(tc => {
-                if (!allCourses.some(c => c.course_code.toUpperCase() === (tc.code || "").toUpperCase() && c.course_name.toLowerCase() === (tc.name || "").toLowerCase() && (c.teacher_id || "").toLowerCase() === teacherId.toLowerCase())) {
+            // 1b. Merge local teacher courses ONLY if running in offline mode (no cloud client)
+            if (!client) {
+                const tidKey = teacherId.toLowerCase().replace(/[^a-z0-9]/g, "_");
+                const localTeacherCourses = JSON.parse(localStorage.getItem(`tracked_teacher_courses_${tidKey}`) || localStorage.getItem("tracked_teacher_courses") || "[]");
+                localTeacherCourses.forEach(tc => {
                     allCourses.push({
                         course_code: tc.code,
                         course_name: tc.name,
                         teacher_id: teacherId
                     });
-                }
-            });
+                });
+            }
 
             // 2. Check: Duplicate for this specific teacher
             for (const c of allCourses) {
@@ -644,9 +662,33 @@ const SUPABASE_CONFIG = {
             const client = getClient();
             if (!client || !courseName) return null;
             const teacherId = (localStorage.getItem("tracked_teacher_id") || "T-2024-0042").trim();
+            const userRole = localStorage.getItem("tracked_user_role") || "teacher";
             const cleanName = courseName.trim();
 
             try {
+                // 0. If user is student, match the course the student is actually enrolled in
+                if (userRole === "student") {
+                    const sid = (localStorage.getItem("tracked_student_id") || "").trim();
+                    if (sid) {
+                        const { data: enrolls } = await client
+                            .from("course_enrollments")
+                            .select("course_id")
+                            .ilike("student_id", sid);
+                        if (enrolls && enrolls.length > 0) {
+                            const cIds = enrolls.map(e => e.course_id);
+                            const { data: matchedCourses } = await client
+                                .from("courses")
+                                .select("course_id")
+                                .in("course_id", cIds)
+                                .ilike("course_name", cleanName)
+                                .limit(1);
+                            if (matchedCourses && matchedCourses.length > 0) {
+                                return matchedCourses[0].course_id;
+                            }
+                        }
+                    }
+                }
+
                 // 1. Try matching current teacher's course
                 const { data: teacherCourse, error: tErr } = await client
                     .from("courses")
@@ -838,20 +880,6 @@ const SUPABASE_CONFIG = {
             if (!client || !courseName || !studentId) return false;
             try {
                 let courseId = await this._getCourseId(courseName);
-                if (!courseId) {
-                    // Auto-register course in Cloud if missing
-                    console.log(`[TrackED Backend] Course "${courseName}" missing from cloud, auto-registering...`);
-                    let courseCode = "CS101";
-                    try {
-                        const stored = JSON.parse(localStorage.getItem("tracked_teacher_courses") || "[]");
-                        const match = stored.find(c => c.name && c.name.trim().toLowerCase() === courseName.trim().toLowerCase());
-                        if (match && match.code) courseCode = match.code;
-                    } catch (e) {}
-
-                    await this.addCourse(courseCode, courseName);
-                    courseId = await this._getCourseId(courseName);
-                }
-
                 if (!courseId) {
                     console.warn(`[TrackED Backend] Could not resolve course ID for "${courseName}". Enrollment skipped.`);
                     return false;
@@ -1195,158 +1223,155 @@ const SUPABASE_CONFIG = {
                     localStorage.setItem("tracked_database_students", JSON.stringify(mapped));
                 }
 
-                // 2. Sync courses
-                let courseQuery = client.from("courses").select("*");
-                if (userRole === "teacher") {
-                    courseQuery = courseQuery.eq("teacher_id", teacherId);
+                // 1b. Sync teachers for offline demo cache
+                const { data: dbTeachers } = await client.from("teachers").select("*");
+                if (Array.isArray(dbTeachers)) {
+                    localStorage.setItem("tracked_database_teachers", JSON.stringify(dbTeachers));
                 }
-                const { data: dbCourses } = await courseQuery;
-                if (Array.isArray(dbCourses)) {
-                    // For teachers: auto-push any locally created courses missing in Supabase Cloud
-                    if (userRole === "teacher") {
-                        let localCourses = [];
-                        try {
-                            localCourses = JSON.parse(localStorage.getItem("tracked_teacher_courses") || "[]");
-                        } catch (e) {}
-                        for (const lc of localCourses) {
-                            if (!lc.name) continue;
-                            const exists = dbCourses.some(c => c.course_name.trim().toLowerCase() === lc.name.trim().toLowerCase());
-                            if (!exists) {
-                                console.log(`[TrackED Backend] Auto-syncing missing local course to cloud: ${lc.name}`);
-                                await this.addCourse(lc.code || "CS101", lc.name);
-                            }
-                        }
-                    }
+
+                // 2. Sync courses
+                let dbCourses = [];
+                if (userRole === "teacher") {
+                    const tidKey = teacherId.toLowerCase().replace(/[^a-z0-9]/g, "_");
+                    const { data } = await client.from("courses").select("*").eq("teacher_id", teacherId);
+                    if (Array.isArray(data)) dbCourses = data;
 
                     const mappedCourses = dbCourses.map(c => ({
                         code: c.course_code,
                         name: c.course_name
                     }));
-                    // Cache courses for BOTH teacher and student so UI can resolve course details
+                    // Save scoped to this teacher so other teachers on the same browser never inherit them
+                    localStorage.setItem(`tracked_teacher_courses_${tidKey}`, JSON.stringify(mappedCourses));
                     localStorage.setItem("tracked_teacher_courses", JSON.stringify(mappedCourses));
+                } else {
+                    // For students: fetch ONLY the courses this student is actively enrolled in
+                    const currentSid = (localStorage.getItem("tracked_student_id") || "").trim();
+                    if (currentSid) {
+                        const { data: stEnrolls } = await client.from("course_enrollments").select("course_id").ilike("student_id", currentSid);
+                        if (stEnrolls && stEnrolls.length > 0) {
+                            const cIds = stEnrolls.map(e => e.course_id);
+                            const { data: stCourses } = await client.from("courses").select("*").in("course_id", cIds);
+                            if (Array.isArray(stCourses)) dbCourses = stCourses;
+                        }
+                    }
+                    if (dbCourses.length > 0) {
+                        const mappedCourses = dbCourses.map(c => ({
+                            code: c.course_code,
+                            name: c.course_name
+                        }));
+                        localStorage.setItem("tracked_teacher_courses", JSON.stringify(mappedCourses));
+                    }
+                }
 
-                    // 3. For each course, sync enrollments, activities, quizzes, exams, attendance
-                    for (const c of dbCourses) {
-                        const cName = c.course_name;
+                // 3. For each relevant course, sync enrollments, activities, quizzes, exams, attendance
+                for (const c of dbCourses) {
+                    const cName = c.course_name;
 
-                        // For teachers: auto-push any local enrollments missing in Cloud
-                        if (userRole === "teacher") {
-                            let localEnrolled = [];
-                            try {
-                                localEnrolled = JSON.parse(localStorage.getItem(`tracked_enrolled_${cName}`) || "[]");
-                            } catch (e) {}
-                            if (localEnrolled.length > 0) {
-                                const { data: cloudEnrolls } = await client.from("course_enrollments").select("student_id").eq("course_id", c.course_id);
-                                const cloudSids = new Set((cloudEnrolls || []).map(e => (e.student_id || "").toLowerCase()));
-                                const missingInCloud = localEnrolled.filter(s => s.id && !cloudSids.has(s.id.trim().toLowerCase()));
-                                if (missingInCloud.length > 0) {
-                                    const toUpsert = missingInCloud.map(s => ({
-                                        course_id: c.course_id,
-                                        student_id: s.id.trim()
-                                    }));
-                                    await client.from("course_enrollments").upsert(toUpsert, { onConflict: "course_id,student_id" });
-                                    console.log(`[TrackED Backend] Auto-synced ${toUpsert.length} local enrollments for "${cName}" to Cloud! 🎓`);
-                                }
+                    // Enrollments
+                    const { data: enrolls } = await client.from("course_enrollments").select("student_id").eq("course_id", c.course_id);
+                    if (enrolls) {
+                        const enrolledStudents = enrolls.map(e => {
+                            const stMatch = (dbStudents || []).find(s => s.student_id === e.student_id);
+                            return {
+                                id: e.student_id,
+                                name: stMatch ? stMatch.name : e.student_id,
+                                firstName: stMatch ? stMatch.first_name : "",
+                                middleName: stMatch ? stMatch.middle_name : "",
+                                lastName: stMatch ? stMatch.last_name : ""
+                            };
+                        });
+                        localStorage.setItem(`tracked_enrolled_${cName}`, JSON.stringify(enrolledStudents));
+                    }
+
+                    // Activities
+                    const { data: acts } = await client.from("activities").select("*").eq("course_id", c.course_id);
+                    if (acts) {
+                        const actList = acts.map(a => ({ num: a.activity_number, name: a.activity_name, maxScore: a.max_score }));
+                        localStorage.setItem(`tracked_course_activities_${cName}`, JSON.stringify(actList));
+                        const actIds = acts.map(a => a.activity_id);
+                        if (actIds.length > 0) {
+                            const { data: aScores } = await client.from("activity_scores").select("*").in("activity_id", actIds);
+                            if (aScores) {
+                                let scoreMap = {};
+                                try {
+                                    scoreMap = JSON.parse(localStorage.getItem(`tracked_activity_scores_${cName}`) || "{}");
+                                } catch (e) {}
+                                aScores.forEach(sc => {
+                                    const actObj = acts.find(a => a.activity_id === sc.activity_id);
+                                    if (actObj) {
+                                        if (!scoreMap[sc.student_id]) scoreMap[sc.student_id] = {};
+                                        scoreMap[sc.student_id][actObj.activity_number] = sc.score;
+                                    }
+                                });
+                                localStorage.setItem(`tracked_activity_scores_${cName}`, JSON.stringify(scoreMap));
                             }
                         }
+                    }
 
-                        // Enrollments
-                        const { data: enrolls } = await client.from("course_enrollments").select("student_id").eq("course_id", c.course_id);
-                        if (enrolls) {
-                            const enrolledStudents = enrolls.map(e => {
-                                const stMatch = (dbStudents || []).find(s => s.student_id === e.student_id);
-                                return {
-                                    id: e.student_id,
-                                    name: stMatch ? stMatch.name : e.student_id,
-                                    firstName: stMatch ? stMatch.first_name : "",
-                                    middleName: stMatch ? stMatch.middle_name : "",
-                                    lastName: stMatch ? stMatch.last_name : ""
-                                };
-                            });
-                            localStorage.setItem(`tracked_enrolled_${cName}`, JSON.stringify(enrolledStudents));
-                        }
-
-                        // Activities
-                        const { data: acts } = await client.from("activities").select("*").eq("course_id", c.course_id);
-                        if (acts) {
-                            const actList = acts.map(a => ({ num: a.activity_number, name: a.activity_name, maxScore: a.max_score }));
-                            localStorage.setItem(`tracked_course_activities_${cName}`, JSON.stringify(actList));
-                            const actIds = acts.map(a => a.activity_id);
-                            if (actIds.length > 0) {
-                                const { data: aScores } = await client.from("activity_scores").select("*").in("activity_id", actIds);
-                                if (aScores) {
-                                    const scoreMap = {};
-                                    aScores.forEach(sc => {
-                                        const actObj = acts.find(a => a.activity_id === sc.activity_id);
-                                        if (actObj) {
-                                            if (!scoreMap[sc.student_id]) scoreMap[sc.student_id] = {};
-                                            scoreMap[sc.student_id][actObj.activity_number] = sc.score;
-                                        }
-                                    });
-                                    localStorage.setItem(`tracked_activity_scores_${cName}`, JSON.stringify(scoreMap));
-                                }
+                    // Quizzes
+                    const { data: quizzes } = await client.from("quizzes").select("*").eq("course_id", c.course_id);
+                    if (quizzes) {
+                        const qList = quizzes.map(q => ({ num: q.quiz_number, name: q.quiz_name, maxScore: q.max_score }));
+                        localStorage.setItem(`tracked_course_quizzes_${cName}`, JSON.stringify(qList));
+                        const qIds = quizzes.map(q => q.quiz_id);
+                        if (qIds.length > 0) {
+                            const { data: qScores } = await client.from("quiz_scores").select("*").in("quiz_id", qIds);
+                            if (qScores) {
+                                let scoreMap = {};
+                                try {
+                                    scoreMap = JSON.parse(localStorage.getItem(`tracked_quiz_scores_${cName}`) || "{}");
+                                } catch (e) {}
+                                qScores.forEach(sc => {
+                                    const qObj = quizzes.find(q => q.quiz_id === sc.quiz_id);
+                                    if (qObj) {
+                                        if (!scoreMap[sc.student_id]) scoreMap[sc.student_id] = {};
+                                        scoreMap[sc.student_id][qObj.quiz_number] = sc.score;
+                                    }
+                                });
+                                localStorage.setItem(`tracked_quiz_scores_${cName}`, JSON.stringify(scoreMap));
                             }
                         }
+                    }
 
-                        // Quizzes
-                        const { data: quizzes } = await client.from("quizzes").select("*").eq("course_id", c.course_id);
-                        if (quizzes) {
-                            const qList = quizzes.map(q => ({ num: q.quiz_number, name: q.quiz_name, maxScore: q.max_score }));
-                            localStorage.setItem(`tracked_course_quizzes_${cName}`, JSON.stringify(qList));
-                            const qIds = quizzes.map(q => q.quiz_id);
-                            if (qIds.length > 0) {
-                                const { data: qScores } = await client.from("quiz_scores").select("*").in("quiz_id", qIds);
-                                if (qScores) {
-                                    const scoreMap = {};
-                                    qScores.forEach(sc => {
-                                        const qObj = quizzes.find(q => q.quiz_id === sc.quiz_id);
-                                        if (qObj) {
-                                            if (!scoreMap[sc.student_id]) scoreMap[sc.student_id] = {};
-                                            scoreMap[sc.student_id][qObj.quiz_number] = sc.score;
-                                        }
-                                    });
-                                    localStorage.setItem(`tracked_quiz_scores_${cName}`, JSON.stringify(scoreMap));
-                                }
+                    // Exams
+                    const { data: exams } = await client.from("exams").select("*").eq("course_id", c.course_id);
+                    if (exams) {
+                        const exList = exams.map(x => ({ num: x.exam_number, name: x.exam_name, maxScore: x.max_score }));
+                        localStorage.setItem(`tracked_course_exams_${cName}`, JSON.stringify(exList));
+                        const exIds = exams.map(x => x.exam_id);
+                        if (exIds.length > 0) {
+                            const { data: exScores } = await client.from("exam_scores").select("*").in("exam_id", exIds);
+                            if (exScores) {
+                                let scoreMap = {};
+                                try {
+                                    scoreMap = JSON.parse(localStorage.getItem(`tracked_exam_scores_${cName}`) || "{}");
+                                } catch (e) {}
+                                exScores.forEach(sc => {
+                                    const xObj = exams.find(x => x.exam_id === sc.exam_id);
+                                    if (xObj) {
+                                        if (!scoreMap[sc.student_id]) scoreMap[sc.student_id] = {};
+                                        scoreMap[sc.student_id][xObj.exam_number] = sc.score;
+                                    }
+                                });
+                                localStorage.setItem(`tracked_exam_scores_${cName}`, JSON.stringify(scoreMap));
                             }
                         }
+                    }
 
-                        // Exams
-                        const { data: exams } = await client.from("exams").select("*").eq("course_id", c.course_id);
-                        if (exams) {
-                            const exList = exams.map(x => ({ num: x.exam_number, name: x.exam_name, maxScore: x.max_score }));
-                            localStorage.setItem(`tracked_course_exams_${cName}`, JSON.stringify(exList));
-                            const exIds = exams.map(x => x.exam_id);
-                            if (exIds.length > 0) {
-                                const { data: exScores } = await client.from("exam_scores").select("*").in("exam_id", exIds);
-                                if (exScores) {
-                                    const scoreMap = {};
-                                    exScores.forEach(sc => {
-                                        const xObj = exams.find(x => x.exam_id === sc.exam_id);
-                                        if (xObj) {
-                                            if (!scoreMap[sc.student_id]) scoreMap[sc.student_id] = {};
-                                            scoreMap[sc.student_id][xObj.exam_number] = sc.score;
-                                        }
-                                    });
-                                    localStorage.setItem(`tracked_exam_scores_${cName}`, JSON.stringify(scoreMap));
-                                }
+                    // Attendance: merge Cloud records without erasing local attendance
+                    const { data: attRecords } = await client.from("attendance").select("*").eq("course_id", c.course_id);
+                    if (attRecords && attRecords.length > 0) {
+                        let attMap = {};
+                        try {
+                            attMap = JSON.parse(localStorage.getItem(`tracked_course_attendance_${cName}`) || "{}");
+                        } catch (e) {}
+                        attRecords.forEach(ar => {
+                            if (ar.attendance_date) {
+                                if (!attMap[ar.attendance_date]) attMap[ar.attendance_date] = {};
+                                attMap[ar.attendance_date][ar.student_id] = ar.status;
                             }
-                        }
-
-                        // Attendance: merge Cloud records without erasing local attendance
-                        const { data: attRecords } = await client.from("attendance").select("*").eq("course_id", c.course_id);
-                        if (attRecords && attRecords.length > 0) {
-                            let attMap = {};
-                            try {
-                                attMap = JSON.parse(localStorage.getItem(`tracked_course_attendance_${cName}`) || "{}");
-                            } catch (e) {}
-                            attRecords.forEach(ar => {
-                                if (ar.attendance_date) {
-                                    if (!attMap[ar.attendance_date]) attMap[ar.attendance_date] = {};
-                                    attMap[ar.attendance_date][ar.student_id] = ar.status;
-                                }
-                            });
-                            localStorage.setItem(`tracked_course_attendance_${cName}`, JSON.stringify(attMap));
-                        }
+                        });
+                        localStorage.setItem(`tracked_course_attendance_${cName}`, JSON.stringify(attMap));
                     }
                 }
                 console.log("[TrackED Backend] 🚀 All data synced from Supabase Cloud to local cache!");
@@ -1361,7 +1386,8 @@ const SUPABASE_CONFIG = {
         // Session helpers
         _setTeacherSession: function (teacher) {
             localStorage.setItem("tracked_user_role", "teacher");
-            localStorage.setItem("tracked_teacher_id", teacher.teacher_id || teacher.id);
+            const tid = teacher.teacher_id || teacher.id;
+            localStorage.setItem("tracked_teacher_id", tid);
             localStorage.setItem("tracked_teacher_name", teacher.name);
             localStorage.setItem("tracked_teacher_dept", teacher.department || "College of Computer Studies");
             if (teacher.email) {
@@ -1374,7 +1400,6 @@ const SUPABASE_CONFIG = {
             } else {
                 localStorage.removeItem("tracked_teacher_phone");
             }
-            const tid = teacher.teacher_id || teacher.id;
             const tidKey = (tid || "default").trim().toLowerCase().replace(/[^a-z0-9]/g, "_");
             if (teacher.avatar_data && !teacher.avatar_data.includes("profile.jpg")) {
                 localStorage.setItem(`tracked_teacher_avatar_${tidKey}`, teacher.avatar_data);
@@ -1386,6 +1411,9 @@ const SUPABASE_CONFIG = {
             if (teacher.password_changed) {
                 localStorage.setItem("tracked_teacher_password_changed", "true");
             }
+            // Isolate teacher courses in active cache
+            const tCourses = localStorage.getItem(`tracked_teacher_courses_${tidKey}`) || "[]";
+            localStorage.setItem("tracked_teacher_courses", tCourses);
         },
 
         _setStudentSession: function (student) {

@@ -86,12 +86,14 @@
                 let activities = [];
                 let scoresMap  = {};
 
-                const actRaw = localStorage.getItem(activitiesKey);
+                const actRaw = localStorage.getItem(activitiesKey) ||
+                               localStorage.getItem(`tracked_course_activities_${activeCourse.trim().toLowerCase()}`);
                 if (actRaw) {
                     try { activities = JSON.parse(actRaw) || []; } catch(e) {}
                 }
 
-                const scoreRaw = localStorage.getItem(scoresKey);
+                const scoreRaw = localStorage.getItem(scoresKey) ||
+                                 localStorage.getItem(`tracked_activity_scores_${activeCourse.trim().toLowerCase()}`);
                 if (scoreRaw) {
                     try { scoresMap = JSON.parse(scoreRaw) || {}; } catch(e) {}
                 }
@@ -119,13 +121,28 @@
                 // If teacher created activities for this course, render only the activities where a score was recorded
                 if (activities.length > 0) {
                     activities.forEach(act => {
-                        const sc = studentScores[act.num];
+                        const sc = studentScores[act.num] !== undefined ? studentScores[act.num] : studentScores[String(act.num)];
                         const hasScore = (sc !== undefined && sc !== null && sc !== "");
                         if (hasScore) {
                             records.push({
                                 number: act.name || `Activity ${act.num}`,
                                 date: getPersistentActivityDate(act),
                                 score: `${sc} / ${act.maxScore}`
+                            });
+                        }
+                    });
+                }
+
+                // Fallback: if activity definitions list is empty, but student has scores recorded in scoresMap
+                if (records.length === 0 && Object.keys(studentScores).length > 0) {
+                    Object.keys(studentScores).sort((a, b) => Number(a) - Number(b)).forEach(num => {
+                        const sc = studentScores[num];
+                        if (sc !== undefined && sc !== null && sc !== "") {
+                            const dateVal = localStorage.getItem(`tracked_activity_date_${activeCourse}_${num}`) || "Recorded";
+                            records.push({
+                                number: `Activity ${num}`,
+                                date: dateVal,
+                                score: `${sc}`
                             });
                         }
                     });

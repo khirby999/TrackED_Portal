@@ -102,49 +102,36 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function getEnrolledCourses() {
         const sid = (currentStudentId || "").trim().toLowerCase();
+        const enrolledCourses = [];
 
-        let teacherCourses = [];
-        try {
-            teacherCourses = JSON.parse(localStorage.getItem("tracked_teacher_courses") || "[]");
-        } catch (e) {}
-
-        const deletedCourses = JSON.parse(localStorage.getItem("tracked_deleted_courses") || "[]").map(d => d.toLowerCase());
-
-        // Purge orphan enrollment keys ONLY if we have an active list of valid courses
-        const validCourseNames = new Set(teacherCourses.map(c => (c.name || "").trim().toLowerCase()));
-        if (validCourseNames.size > 0) {
-            Object.keys(localStorage).forEach(k => {
-                if (k.startsWith("tracked_enrolled_")) {
-                    const cName = k.replace("tracked_enrolled_", "").trim().toLowerCase();
-                    if (!validCourseNames.has(cName)) {
-                        localStorage.removeItem(k);
-                    }
+        // 1. Check student-scoped cached course list first
+        const studentScoped = localStorage.getItem(`tracked_student_courses_${sid}`);
+        if (studentScoped) {
+            try {
+                const list = JSON.parse(studentScoped);
+                if (Array.isArray(list) && list.length > 0) {
+                    return list;
                 }
-            });
+            } catch(e) {}
         }
 
-        // Check which courses THIS student is actually enrolled in
-        const enrolledCourses = [];
-        teacherCourses.forEach(c => {
-            if (!c.name) return;
-            const cLower = c.name.trim().toLowerCase();
-            if (deletedCourses.includes(cLower)) return;
-
-            const enrollKey = `tracked_enrolled_${c.name}`;
-            let enrollList = [];
-            const raw = localStorage.getItem(enrollKey);
-            if (raw) {
-                try { enrollList = JSON.parse(raw) || []; } catch(e) {}
-            }
-            const isEnrolled = enrollList.some(s => s.id && s.id.trim().toLowerCase() === sid);
-            if (isEnrolled) {
-                enrolledCourses.push({
-                    code: c.code || "CS",
-                    name: c.name,
-                    instructor: "Prof. Billie Eilish",
-                    icon: "fa-graduation-cap",
-                    colorClass: "tab-course"
-                });
+        // 2. Fallback: inspect tracked_enrolled_* keys in localStorage
+        Object.keys(localStorage).forEach(k => {
+            if (k.startsWith("tracked_enrolled_")) {
+                const courseName = k.replace("tracked_enrolled_", "").trim();
+                if (!courseName) return;
+                try {
+                    const enrollList = JSON.parse(localStorage.getItem(k) || "[]");
+                    if (Array.isArray(enrollList) && enrollList.some(s => s && s.id && s.id.trim().toLowerCase() === sid)) {
+                        enrolledCourses.push({
+                            code: "CS",
+                            name: courseName,
+                            instructor: "Instructor",
+                            icon: "fa-graduation-cap",
+                            colorClass: "tab-course"
+                        });
+                    }
+                } catch(e) {}
             }
         });
 
@@ -174,7 +161,7 @@ document.addEventListener("DOMContentLoaded", () => {
             card.className = `tab-card ${course.colorClass || "tab-course"}`;
             card.setAttribute("data-course-name", course.name);
             card.setAttribute("data-course-code", course.code || "");
-            card.setAttribute("data-instructor", course.instructor || "Prof. Billie Eilish");
+            card.setAttribute("data-instructor", course.instructor || "Instructor");
 
             card.innerHTML = `
                 <div class="tab-icon">
@@ -203,7 +190,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (cName) {
                     localStorage.setItem("tracked_student_selected_course", cName);
                     localStorage.setItem("tracked_student_selected_course_code", cCode || "");
-                    localStorage.setItem("tracked_student_selected_instructor", cInst || "Prof. Billie Eilish");
+                    localStorage.setItem("tracked_student_selected_instructor", cInst || "Instructor");
                 }
             }
         });
@@ -239,26 +226,32 @@ document.addEventListener("DOMContentLoaded", () => {
                 const sid = (currentStudentId || "").trim();
                 const cloudCourses = await window.TrackED_DB.getStudentEnrolledCourses(sid);
                 if (cloudCourses && cloudCourses.length > 0) {
-                    try {
-                        let teacherCourses = JSON.parse(localStorage.getItem("tracked_teacher_courses") || "[]");
-                        cloudCourses.forEach(cc => {
-                            if (!teacherCourses.some(tc => tc.name && tc.name.trim().toLowerCase() === cc.name.trim().toLowerCase())) {
-                                teacherCourses.push({ code: cc.code, name: cc.name });
-                            }
-                            const enrollKey = `tracked_enrolled_${cc.name}`;
-                            let enrollList = JSON.parse(localStorage.getItem(enrollKey) || "[]");
-                            if (!enrollList.some(s => s.id && s.id.trim().toLowerCase() === sid.toLowerCase())) {
-                                enrollList.push({
-                                    id: sid,
-                                    name: currentStudentName
-                                });
-                                localStorage.setItem(enrollKey, JSON.stringify(enrollList));
-                            }
-                        });
-                        localStorage.setItem("tracked_teacher_courses", JSON.stringify(teacherCourses));
-                    } catch (e) {}
+                    const sidLower = sid.toLowerCase();
+                    const studentCourseList = cloudCourses.map(cc => ({
+                        code: cc.code || "CS",
+                        name: cc.name,
+                        instructor: cc.instructor || "Instructor",
+                        icon: "fa-graduation-cap",
+                        colorClass: "tab-course"
+                    }));
 
-                    renderStudentCourses(cloudCourses);
+                    // Save to student-scoped cache ONLY (never pollute teacher course lists)
+                    localStorage.setItem(`tracked_student_courses_${sidLower}`, JSON.stringify(studentCourseList));
+
+                    cloudCourses.forEach(cc => {
+                        const enrollKey = `tracked_enrolled_${cc.name}`;
+                        let enrollList = [];
+                        try { enrollList = JSON.parse(localStorage.getItem(enrollKey) || "[]"); } catch(e) {}
+                        if (!enrollList.some(s => s.id && s.id.trim().toLowerCase() === sidLower)) {
+                            enrollList.push({
+                                id: sid,
+                                name: currentStudentName
+                            });
+                            localStorage.setItem(enrollKey, JSON.stringify(enrollList));
+                        }
+                    });
+
+                    renderStudentCourses(studentCourseList);
                     return;
                 }
             } catch (err) {

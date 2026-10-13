@@ -11,6 +11,27 @@ document.addEventListener("DOMContentLoaded", () => {
     const currentTidKey      = (currentTeacherId || "default").trim().toLowerCase().replace(/[^a-z0-9]/g, "_");
     const defaultTeacherAvatar = "../images/default-avatar.svg";
 
+    // Course helpers scoped to active teacher ID
+    function getTeacherCourses() {
+        const scoped = localStorage.getItem(`tracked_teacher_courses_${currentTidKey}`);
+        if (scoped !== null) {
+            try { return JSON.parse(scoped) || []; } catch(e) {}
+        }
+        const legacy = localStorage.getItem("tracked_teacher_courses");
+        if (legacy !== null) {
+            try { return JSON.parse(legacy) || []; } catch(e) {}
+        }
+        return [];
+    }
+
+    function saveTeacherCourses(courses) {
+        localStorage.setItem(`tracked_teacher_courses_${currentTidKey}`, JSON.stringify(courses));
+        localStorage.setItem("tracked_teacher_courses", JSON.stringify(courses));
+    }
+
+    // Clean legacy blacklist to ensure deleted courses are never permanently hidden
+    localStorage.removeItem("tracked_deleted_courses");
+
     // Clean blank avatar by default unless teacher explicitly uploaded a custom image
     let rawTeacherAvatar = localStorage.getItem(`tracked_teacher_avatar_${currentTidKey}`) ||
                           localStorage.getItem("tracked_teacher_avatar_data");
@@ -167,7 +188,7 @@ document.addEventListener("DOMContentLoaded", () => {
         // If existing student update: sync updated name.
         let teacherCourses = [];
         try {
-            teacherCourses = JSON.parse(localStorage.getItem("tracked_teacher_courses") || "[]");
+            teacherCourses = getTeacherCourses();
         } catch (e) {}
 
         teacherCourses.map(c => c.name).filter(Boolean).forEach(cName => {
@@ -810,7 +831,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     return;
                 }
             } else {
-                let customCourses = JSON.parse(localStorage.getItem("tracked_teacher_courses") || "[]");
+                let customCourses = getTeacherCourses();
                 const isDuplicateName = customCourses.some(c => 
                     c.name && c.name.trim().toLowerCase() === newName.toLowerCase() &&
                     c.name.trim().toLowerCase() !== currentEditingCourseName.toLowerCase()
@@ -837,19 +858,19 @@ document.addEventListener("DOMContentLoaded", () => {
 
             if (editCourseErrorAlert) editCourseErrorAlert.style.display = "none";
 
-            let customCourses = JSON.parse(localStorage.getItem("tracked_teacher_courses") || "[]");
+            let customCourses = getTeacherCourses();
 
             const oldName = currentEditingCourseName;
             const oldCode = currentEditingCourseCode;
 
-            // Find and update course in tracked_teacher_courses
+            // Find and update course in teacher courses
             const courseIdx = customCourses.findIndex(c => c.name && c.name.trim().toLowerCase() === oldName.toLowerCase());
             if (courseIdx > -1) {
                 customCourses[courseIdx] = { code: newCode, name: newName };
             } else {
                 customCourses.push({ code: newCode, name: newName });
             }
-            localStorage.setItem("tracked_teacher_courses", JSON.stringify(customCourses));
+            saveTeacherCourses(customCourses);
 
             // Sync to Supabase Cloud if connected
             if (window.TrackED_DB && typeof window.TrackED_DB.editCourse === "function") {
@@ -889,14 +910,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (localStorage.getItem("tracked_student_selected_course") === oldName) {
                     localStorage.setItem("tracked_student_selected_course", newName);
                     localStorage.setItem("tracked_student_selected_course_code", newCode);
-                }
-
-                // Clean from deleted courses if present
-                const delList = JSON.parse(localStorage.getItem("tracked_deleted_courses") || "[]");
-                const delIdx = delList.indexOf(oldName);
-                if (delIdx > -1) {
-                    delList.splice(delIdx, 1);
-                    localStorage.setItem("tracked_deleted_courses", JSON.stringify(delList));
                 }
             } else {
                 if (localStorage.getItem("tracked_selected_course") === oldName) {
@@ -988,10 +1001,10 @@ document.addEventListener("DOMContentLoaded", () => {
             cardToRemove.style.transform = "scale(0.85)";
             setTimeout(() => cardToRemove.remove(), 250);
 
-            // Remove from custom courses if stored
-            let customCourses = JSON.parse(localStorage.getItem("tracked_teacher_courses") || "[]");
-            customCourses = customCourses.filter(c => c.name !== courseToDeleteName);
-            localStorage.setItem("tracked_teacher_courses", JSON.stringify(customCourses));
+            // Remove from teacher courses
+            let customCourses = getTeacherCourses();
+            customCourses = customCourses.filter(c => c.name && c.name.trim().toLowerCase() !== courseToDeleteName.toLowerCase());
+            saveTeacherCourses(customCourses);
 
             // Clean up course-specific data keys
             localStorage.removeItem(`tracked_enrolled_${courseToDeleteName}`);
@@ -1003,12 +1016,8 @@ document.addEventListener("DOMContentLoaded", () => {
             localStorage.removeItem(`tracked_exam_scores_${courseToDeleteName}`);
             localStorage.removeItem(`tracked_course_attendance_${courseToDeleteName}`);
 
-            // Record in deleted courses list so default courses remain deleted
-            const deletedCourses = JSON.parse(localStorage.getItem("tracked_deleted_courses") || "[]");
-            if (!deletedCourses.includes(courseToDeleteName)) {
-                deletedCourses.push(courseToDeleteName);
-                localStorage.setItem("tracked_deleted_courses", JSON.stringify(deletedCourses));
-            }
+            // Ensure no legacy blacklist entry lingers
+            localStorage.removeItem("tracked_deleted_courses");
 
             // Sync deletion to Supabase Cloud if connected
             if (window.TrackED_DB && typeof window.TrackED_DB.deleteCourse === "function") {
@@ -1063,19 +1072,15 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    // Hide any previously deleted default courses on page load
-    const deletedCourses = JSON.parse(localStorage.getItem("tracked_deleted_courses") || "[]");
-    document.querySelectorAll(".tab-card[data-course-name]").forEach(card => {
-        const name = card.getAttribute("data-course-name");
-        if (deletedCourses.includes(name)) {
-            card.remove();
-        }
-    });
-
     // Create DOM element for a course card
     function renderCourseCard(course) {
-        if (!coursesGrid || !addCourseBtn) return;
-        if (deletedCourses.includes(course.name)) return;
+        if (!coursesGrid || !addCourseBtn || !course || !course.name) return;
+
+        // Prevent duplicate cards if card already rendered in DOM
+        const existing = Array.from(coursesGrid.querySelectorAll(".tab-card.tab-custom")).find(
+            c => (c.getAttribute("data-course-name") || "").trim().toLowerCase() === course.name.trim().toLowerCase()
+        );
+        if (existing) return;
 
         const card = document.createElement("a");
         card.href = "teacherCourse.html";
@@ -1104,6 +1109,13 @@ document.addEventListener("DOMContentLoaded", () => {
         coursesGrid.insertBefore(card, addCourseBtn);
     }
 
+    function refreshCoursesGrid() {
+        if (!coursesGrid || !addCourseBtn) return;
+        coursesGrid.querySelectorAll(".tab-card.tab-custom").forEach(c => c.remove());
+        const savedCourses = getTeacherCourses();
+        savedCourses.forEach(renderCourseCard);
+    }
+
     function escapeHtml(str) {
         if (!str) return "";
         const div = document.createElement("div");
@@ -1111,9 +1123,13 @@ document.addEventListener("DOMContentLoaded", () => {
         return div.innerHTML;
     }
 
-    // Load custom courses stored in localStorage
-    const savedCourses = JSON.parse(localStorage.getItem("tracked_teacher_courses") || "[]");
-    savedCourses.forEach(renderCourseCard);
+    // Initial render of saved courses
+    refreshCoursesGrid();
+
+    // Re-render immediately when background Supabase sync finishes
+    window.addEventListener("tracked_sync_completed", () => {
+        refreshCoursesGrid();
+    });
 
     if (addCourseForm) {
         addCourseForm.addEventListener("submit", async (e) => {
@@ -1135,7 +1151,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     return;
                 }
             } else {
-                const courses = JSON.parse(localStorage.getItem("tracked_teacher_courses") || "[]");
+                const courses = getTeacherCourses();
                 if (courses.some(c => c.code && c.code.trim().toUpperCase() === courseCode)) {
                     if (courseErrorAlert && courseErrorMsg) {
                         courseErrorMsg.textContent = `You already have a course with code "${courseCode}".`;
@@ -1156,19 +1172,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
             if (courseErrorAlert) courseErrorAlert.style.display = "none";
 
-            // If it was in deleted courses, remove it from deleted
-            const delIndex = deletedCourses.indexOf(courseName);
-            if (delIndex > -1) {
-                deletedCourses.splice(delIndex, 1);
-                localStorage.setItem("tracked_deleted_courses", JSON.stringify(deletedCourses));
-            }
-
             const newCourse = { code: courseCode, name: courseName };
 
-            // Save to localStorage
-            const courses = JSON.parse(localStorage.getItem("tracked_teacher_courses") || "[]");
+            // Save to localStorage scoped to this teacher
+            const courses = getTeacherCourses();
             courses.push(newCourse);
-            localStorage.setItem("tracked_teacher_courses", JSON.stringify(courses));
+            saveTeacherCourses(courses);
 
             // Sync to Supabase Cloud if connected
             if (window.TrackED_DB && typeof window.TrackED_DB.addCourse === "function") {

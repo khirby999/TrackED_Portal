@@ -86,12 +86,14 @@
                 let quizzes   = [];
                 let scoresMap = {};
 
-                const quizRaw = localStorage.getItem(quizzesKey);
+                const quizRaw = localStorage.getItem(quizzesKey) ||
+                                localStorage.getItem(`tracked_course_quizzes_${activeCourse.trim().toLowerCase()}`);
                 if (quizRaw) {
                     try { quizzes = JSON.parse(quizRaw) || []; } catch(e) {}
                 }
 
-                const scoreRaw = localStorage.getItem(scoresKey);
+                const scoreRaw = localStorage.getItem(scoresKey) ||
+                                 localStorage.getItem(`tracked_quiz_scores_${activeCourse.trim().toLowerCase()}`);
                 if (scoreRaw) {
                     try { scoresMap = JSON.parse(scoreRaw) || {}; } catch(e) {}
                 }
@@ -119,13 +121,28 @@
                 // If teacher created quizzes for this course, render only the quizzes where a score was recorded
                 if (quizzes.length > 0) {
                     quizzes.forEach(q => {
-                        const sc = studentScores[q.num];
+                        const sc = studentScores[q.num] !== undefined ? studentScores[q.num] : studentScores[String(q.num)];
                         const hasScore = (sc !== undefined && sc !== null && sc !== "");
                         if (hasScore) {
                             records.push({
                                 number: q.name || `Quiz ${q.num}`,
                                 date: getPersistentQuizDate(q),
                                 score: `${sc} / ${q.maxScore}`
+                            });
+                        }
+                    });
+                }
+
+                // Fallback: if quiz definitions list is empty, but student has scores recorded in scoresMap
+                if (records.length === 0 && Object.keys(studentScores).length > 0) {
+                    Object.keys(studentScores).sort((a, b) => Number(a) - Number(b)).forEach(num => {
+                        const sc = studentScores[num];
+                        if (sc !== undefined && sc !== null && sc !== "") {
+                            const dateVal = localStorage.getItem(`tracked_quiz_date_${activeCourse}_${num}`) || "Recorded";
+                            records.push({
+                                number: `Quiz ${num}`,
+                                date: dateVal,
+                                score: `${sc}`
                             });
                         }
                     });
