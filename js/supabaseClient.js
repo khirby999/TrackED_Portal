@@ -39,26 +39,21 @@ const SUPABASE_CONFIG = {
         return null;
     }
 
-    // Fresh wipe to remove all mock students and mock courses requested by user
-    if (localStorage.getItem("tracked_clean_slate_v3") !== "true") {
-        localStorage.setItem("tracked_database_students", JSON.stringify([]));
-        localStorage.setItem("tracked_teacher_courses", JSON.stringify([]));
-        localStorage.removeItem("tracked_selected_course");
-        localStorage.removeItem("tracked_selected_course_code");
-        Object.keys(localStorage).forEach(k => {
-            if (k.startsWith("tracked_enrolled_") || 
-                k.startsWith("tracked_course_") || 
-                k.startsWith("tracked_activity_") || 
-                k.startsWith("tracked_quiz_") || 
-                k.startsWith("tracked_exam_") || 
-                k.startsWith("tracked_student_pwd_") ||
-                k.startsWith("tracked_student_avatar_") ||
-                k === "tracked_deleted_courses" ||
-                k.startsWith("tracked_attendance_")) {
-                localStorage.removeItem(k);
-            }
-        });
-        localStorage.setItem("tracked_clean_slate_v3", "true");
+    // Fresh wipe for unscoped keys to guarantee no cross-account leaks
+    if (localStorage.getItem("tracked_clean_slate_v4") !== "true") {
+        const unscopedLeakKeys = [
+            "tracked_recovery_email",
+            "tracked_student_recovery_email",
+            "tracked_teacher_recovery_email",
+            "tracked_phone",
+            "tracked_student_phone",
+            "tracked_teacher_phone",
+            "tracked_avatar_data",
+            "tracked_student_avatar_data",
+            "tracked_teacher_avatar_data"
+        ];
+        unscopedLeakKeys.forEach(k => localStorage.removeItem(k));
+        localStorage.setItem("tracked_clean_slate_v4", "true");
     }
 
     // Default Seed Data (Only registered students in database can log in)
@@ -140,8 +135,9 @@ const SUPABASE_CONFIG = {
                 localTeachers = JSON.parse(localStorage.getItem("tracked_database_teachers") || "[]");
             } catch (e) {}
 
+            const defTidKey = (DEFAULT_TEACHER.id || "default").trim().toLowerCase().replace(/[^a-z0-9]/g, "_");
             const savedTeacherPwd = localStorage.getItem("tracked_teacher_password") || DEFAULT_TEACHER.password;
-            const savedTeacherEmail = localStorage.getItem("tracked_teacher_recovery_email") || DEFAULT_TEACHER.email || "";
+            const savedTeacherEmail = localStorage.getItem(`tracked_teacher_recovery_email_${defTidKey}`) || DEFAULT_TEACHER.email || "";
 
             // Check default teacher or any custom teacher cached from cloud
             let matchedTeacher = localTeachers.find(t => 
@@ -163,7 +159,7 @@ const SUPABASE_CONFIG = {
                 const teacherObj = {
                     ...DEFAULT_TEACHER,
                     email: savedTeacherEmail,
-                    phone: localStorage.getItem("tracked_teacher_phone") || DEFAULT_TEACHER.phone || "",
+                    phone: localStorage.getItem(`tracked_teacher_phone_${defTidKey}`) || DEFAULT_TEACHER.phone || "",
                     password: savedTeacherPwd,
                     password_changed: localStorage.getItem("tracked_teacher_password_changed") === "true"
                 };
@@ -341,7 +337,8 @@ const SUPABASE_CONFIG = {
 
             // 2. Offline / Local fallback check
             const teacherId = localStorage.getItem("tracked_teacher_id") || "T-2024-0042";
-            const teacherEmail = localStorage.getItem("tracked_teacher_recovery_email") || "";
+            const tidKey = (teacherId || "default").trim().toLowerCase().replace(/[^a-z0-9]/g, "_");
+            const teacherEmail = localStorage.getItem(`tracked_teacher_recovery_email_${tidKey}`) || "";
             const teacherName = localStorage.getItem("tracked_teacher_name") || "Eilish, Billie O.";
 
             if (mode === "id" && cleanVal.toLowerCase() === teacherId.toLowerCase()) {
@@ -491,13 +488,18 @@ const SUPABASE_CONFIG = {
         updateProfile: async function (role, id, details) {
             const client = getClient();
             if (role === "teacher") {
+                const tidKey = (id || "default").trim().toLowerCase().replace(/[^a-z0-9]/g, "_");
                 if (details.email !== undefined) {
-                    if (details.email) localStorage.setItem("tracked_teacher_recovery_email", details.email);
-                    else localStorage.removeItem("tracked_teacher_recovery_email");
+                    if (details.email) localStorage.setItem(`tracked_teacher_recovery_email_${tidKey}`, details.email);
+                    else localStorage.removeItem(`tracked_teacher_recovery_email_${tidKey}`);
+                    localStorage.removeItem("tracked_teacher_recovery_email");
+                    localStorage.removeItem("tracked_recovery_email");
                 }
                 if (details.phone !== undefined) {
-                    if (details.phone) localStorage.setItem("tracked_teacher_phone", details.phone);
-                    else localStorage.removeItem("tracked_teacher_phone");
+                    if (details.phone) localStorage.setItem(`tracked_teacher_phone_${tidKey}`, details.phone);
+                    else localStorage.removeItem(`tracked_teacher_phone_${tidKey}`);
+                    localStorage.removeItem("tracked_teacher_phone");
+                    localStorage.removeItem("tracked_phone");
                 }
                 if (client) {
                     try {
@@ -518,21 +520,23 @@ const SUPABASE_CONFIG = {
                 const sidKey = (id || "").trim().toLowerCase();
                 if (details.email !== undefined) {
                     if (details.email) {
-                        localStorage.setItem("tracked_student_recovery_email", details.email);
+                        localStorage.setItem(`tracked_student_recovery_email_${sidKey}`, details.email);
                         localStorage.setItem(`tracked_student_email_${sidKey}`, details.email);
                     } else {
-                        localStorage.removeItem("tracked_student_recovery_email");
+                        localStorage.removeItem(`tracked_student_recovery_email_${sidKey}`);
                         localStorage.removeItem(`tracked_student_email_${sidKey}`);
                     }
+                    localStorage.removeItem("tracked_student_recovery_email");
+                    localStorage.removeItem("tracked_recovery_email");
                 }
                 if (details.phone !== undefined) {
                     if (details.phone) {
-                        localStorage.setItem("tracked_student_phone", details.phone);
                         localStorage.setItem(`tracked_student_phone_${sidKey}`, details.phone);
                     } else {
-                        localStorage.removeItem("tracked_student_phone");
                         localStorage.removeItem(`tracked_student_phone_${sidKey}`);
                     }
+                    localStorage.removeItem("tracked_student_phone");
+                    localStorage.removeItem("tracked_phone");
                 }
                 // Update local cached student record in tracked_database_students
                 try {
@@ -1466,28 +1470,46 @@ const SUPABASE_CONFIG = {
 
         // Session helpers
         _setTeacherSession: function (teacher) {
+            // Completely clear any previous student session so roles never mix
+            localStorage.removeItem("tracked_student_id");
+            localStorage.removeItem("tracked_student_name");
+            localStorage.removeItem("tracked_student_program");
+            localStorage.removeItem("tracked_student_courses");
+            localStorage.removeItem("tracked_student_password");
+            localStorage.removeItem("tracked_student_password_changed");
+
+            // Clean any legacy shared recovery keys
+            localStorage.removeItem("tracked_recovery_email");
+            localStorage.removeItem("tracked_student_recovery_email");
+            localStorage.removeItem("tracked_teacher_recovery_email");
+            localStorage.removeItem("tracked_phone");
+            localStorage.removeItem("tracked_student_phone");
+            localStorage.removeItem("tracked_teacher_phone");
+            localStorage.removeItem("tracked_avatar_data");
+            localStorage.removeItem("tracked_student_avatar_data");
+            localStorage.removeItem("tracked_teacher_avatar_data");
+
             localStorage.setItem("tracked_user_role", "teacher");
             const tid = teacher.teacher_id || teacher.id;
             localStorage.setItem("tracked_teacher_id", tid);
             localStorage.setItem("tracked_teacher_name", teacher.name);
             localStorage.setItem("tracked_teacher_dept", teacher.department || "College of Computer Studies");
+
+            const tidKey = (tid || "default").trim().toLowerCase().replace(/[^a-z0-9]/g, "_");
             if (teacher.email) {
-                localStorage.setItem("tracked_teacher_recovery_email", teacher.email);
+                localStorage.setItem(`tracked_teacher_recovery_email_${tidKey}`, teacher.email);
             } else {
-                localStorage.removeItem("tracked_teacher_recovery_email");
+                localStorage.removeItem(`tracked_teacher_recovery_email_${tidKey}`);
             }
             if (teacher.phone) {
-                localStorage.setItem("tracked_teacher_phone", teacher.phone);
+                localStorage.setItem(`tracked_teacher_phone_${tidKey}`, teacher.phone);
             } else {
-                localStorage.removeItem("tracked_teacher_phone");
+                localStorage.removeItem(`tracked_teacher_phone_${tidKey}`);
             }
-            const tidKey = (tid || "default").trim().toLowerCase().replace(/[^a-z0-9]/g, "_");
             if (teacher.avatar_data && !teacher.avatar_data.includes("profile.jpg")) {
                 localStorage.setItem(`tracked_teacher_avatar_${tidKey}`, teacher.avatar_data);
-                localStorage.setItem("tracked_teacher_avatar_data", teacher.avatar_data);
             } else {
                 localStorage.removeItem(`tracked_teacher_avatar_${tidKey}`);
-                localStorage.removeItem("tracked_teacher_avatar_data");
             }
             if (teacher.password_changed) {
                 localStorage.setItem("tracked_teacher_password_changed", "true");
@@ -1498,6 +1520,24 @@ const SUPABASE_CONFIG = {
         },
 
         _setStudentSession: function (student) {
+            // Completely clear any previous teacher session so roles never mix
+            localStorage.removeItem("tracked_teacher_id");
+            localStorage.removeItem("tracked_teacher_name");
+            localStorage.removeItem("tracked_teacher_dept");
+            localStorage.removeItem("tracked_teacher_courses");
+            localStorage.removeItem("tracked_teacher_password_changed");
+
+            // Clean all un-scoped shared keys
+            localStorage.removeItem("tracked_recovery_email");
+            localStorage.removeItem("tracked_student_recovery_email");
+            localStorage.removeItem("tracked_teacher_recovery_email");
+            localStorage.removeItem("tracked_phone");
+            localStorage.removeItem("tracked_student_phone");
+            localStorage.removeItem("tracked_teacher_phone");
+            localStorage.removeItem("tracked_avatar_data");
+            localStorage.removeItem("tracked_student_avatar_data");
+            localStorage.removeItem("tracked_teacher_avatar_data");
+
             const sid = student.student_id || student.id;
             let sName = student.name;
             let sProg = student.program || "BS Computer Science";
@@ -1531,18 +1571,19 @@ const SUPABASE_CONFIG = {
             localStorage.setItem("tracked_student_id", sid);
             localStorage.setItem("tracked_student_name", displayName);
             localStorage.setItem("tracked_student_program", `${sProg} • ${sYear}`);
+
+            const sidKey = sid.trim().toLowerCase();
             if (student.email) {
-                localStorage.setItem("tracked_student_recovery_email", student.email);
+                localStorage.setItem(`tracked_student_recovery_email_${sidKey}`, student.email);
             } else {
-                localStorage.removeItem("tracked_student_recovery_email");
+                localStorage.removeItem(`tracked_student_recovery_email_${sidKey}`);
             }
             if (student.phone) {
-                localStorage.setItem("tracked_student_phone", student.phone);
+                localStorage.setItem(`tracked_student_phone_${sidKey}`, student.phone);
             } else {
-                localStorage.removeItem("tracked_student_phone");
+                localStorage.removeItem(`tracked_student_phone_${sidKey}`);
             }
             
-            const sidKey = sid.trim().toLowerCase();
             const defaultPwd = student.password || "1234";
             if (!localStorage.getItem(`tracked_student_pwd_${sidKey}`)) {
                 localStorage.setItem(`tracked_student_pwd_${sidKey}`, defaultPwd);
@@ -1564,8 +1605,57 @@ const SUPABASE_CONFIG = {
                 localStorage.removeItem("tracked_student_password_changed");
             }
             sessionStorage.removeItem("tracked_student_pwd_dismissed");
+        },
+
+        /**
+         * Central portal logout handler that resets active session identities
+         */
+        logout: function () {
+            const sessionKeys = [
+                "tracked_user_role",
+                "tracked_student_id",
+                "tracked_student_name",
+                "tracked_student_program",
+                "tracked_student_courses",
+                "tracked_student_password",
+                "tracked_student_password_changed",
+                "tracked_teacher_id",
+                "tracked_teacher_name",
+                "tracked_teacher_dept",
+                "tracked_teacher_courses",
+                "tracked_teacher_password_changed",
+                "tracked_selected_course",
+                "tracked_selected_course_code",
+                "tracked_recovery_email",
+                "tracked_student_recovery_email",
+                "tracked_teacher_recovery_email",
+                "tracked_phone",
+                "tracked_student_phone",
+                "tracked_teacher_phone",
+                "tracked_avatar_data",
+                "tracked_student_avatar_data",
+                "tracked_teacher_avatar_data"
+            ];
+            sessionKeys.forEach(k => localStorage.removeItem(k));
+            sessionStorage.clear();
         }
     };
+
+    // Global listener: Intercept all 'Log Out' links to cleanly wipe session state
+    if (typeof document !== "undefined") {
+        document.addEventListener("DOMContentLoaded", () => {
+            document.querySelectorAll('a[href$="index.html"], a[href$="/index.html"]').forEach(link => {
+                const txt = (link.textContent || "").toLowerCase();
+                if (txt.includes("log out") || txt.includes("logout") || txt.includes("sign out")) {
+                    link.addEventListener("click", () => {
+                        if (window.TrackED_DB && typeof window.TrackED_DB.logout === "function") {
+                            window.TrackED_DB.logout();
+                        }
+                    });
+                }
+            });
+        });
+    }
 
     // Auto-sync from Supabase Cloud on load if connected
     if (window.TrackED_DB && window.TrackED_DB.isCloudConnected()) {

@@ -148,16 +148,11 @@ document.addEventListener("DOMContentLoaded", () => {
                             targetName = foundAccount.user.name || username;
                         }
 
-                        // Fallback to locally stored recovery email for this student if matched
+                        // Fallback to locally stored recovery email for this specific account
                         if (!targetEmail) {
                             const cleanUname = (username || "").trim().toLowerCase();
-                            targetEmail = localStorage.getItem(`tracked_student_recovery_email_${cleanUname}`) || "";
-                            if (!targetEmail) {
-                                const activeSid = (localStorage.getItem("tracked_student_id") || "").trim().toLowerCase();
-                                if (activeSid === cleanUname) {
-                                    targetEmail = localStorage.getItem("tracked_student_recovery_email") || "";
-                                }
-                            }
+                            targetEmail = localStorage.getItem(`tracked_student_recovery_email_${cleanUname}`) ||
+                                          localStorage.getItem(`tracked_teacher_recovery_email_${cleanUname}`) || "";
                         }
 
                         if (targetEmail) {

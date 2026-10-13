@@ -135,7 +135,7 @@
                 // Fallback to per-student history key if course map had no records for this student
                 if (filteredRecords.length === 0) {
                     const studentKey = `tracked_attendance_${activeCourse.trim().toLowerCase()}_${sidLower}`;
-                    const rawStudentHistory = localStorage.getItem(studentKey) || localStorage.getItem(`tracked_attendance_${activeCourse.trim().toLowerCase()}`);
+                    const rawStudentHistory = localStorage.getItem(studentKey);
                     if (rawStudentHistory) {
                         try {
                             const parsedList = JSON.parse(rawStudentHistory);

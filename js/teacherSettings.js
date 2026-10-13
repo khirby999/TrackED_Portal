@@ -24,12 +24,15 @@ document.addEventListener("DOMContentLoaded", () => {
     const teacherName = localStorage.getItem("tracked_teacher_name") || "Billie Eilish";
     const facultyId   = localStorage.getItem("tracked_teacher_id") || "FAC-2026-001";
     const department  = localStorage.getItem("tracked_teacher_dept") || "College of Computer Studies";
-    const savedRecoveryEmail = localStorage.getItem("tracked_teacher_recovery_email") || 
-                               localStorage.getItem("tracked_recovery_email") || 
-                               "";
-    const savedPhone  = localStorage.getItem("tracked_teacher_phone") || 
-                        localStorage.getItem("tracked_phone") || 
-                        "";
+    const tidKey      = (facultyId || "default").trim().toLowerCase().replace(/[^a-z0-9]/g, "_");
+    // Scrub any legacy un-scoped shared keys to eliminate leakage
+    localStorage.removeItem("tracked_recovery_email");
+    localStorage.removeItem("tracked_teacher_recovery_email");
+    localStorage.removeItem("tracked_phone");
+    localStorage.removeItem("tracked_teacher_phone");
+
+    const savedRecoveryEmail = localStorage.getItem(`tracked_teacher_recovery_email_${tidKey}`) || "";
+    const savedPhone  = localStorage.getItem(`tracked_teacher_phone_${tidKey}`) || "";
 
     const headerUserName      = document.getElementById("headerUserName");
     const avatarDisplayName   = document.getElementById("avatarDisplayName");
@@ -205,20 +208,22 @@ document.addEventListener("DOMContentLoaded", () => {
             const updatedEmail = profileEmail ? profileEmail.value.trim() : "";
             const updatedPhone = profilePhone ? profilePhone.value.trim() : "";
 
-            // Save teacher recovery email and phone locally
+            // Save teacher recovery email and phone locally strictly per-teacher
             if (updatedEmail) {
-                localStorage.setItem("tracked_teacher_recovery_email", updatedEmail);
-                localStorage.setItem("tracked_recovery_email", updatedEmail); // Also general fallback for forgotPassword
+                localStorage.setItem(`tracked_teacher_recovery_email_${tidKey}`, updatedEmail);
             } else {
-                localStorage.removeItem("tracked_teacher_recovery_email");
-                localStorage.removeItem("tracked_recovery_email");
+                localStorage.removeItem(`tracked_teacher_recovery_email_${tidKey}`);
             }
+            localStorage.removeItem("tracked_teacher_recovery_email");
+            localStorage.removeItem("tracked_recovery_email");
 
             if (updatedPhone) {
-                localStorage.setItem("tracked_teacher_phone", updatedPhone);
+                localStorage.setItem(`tracked_teacher_phone_${tidKey}`, updatedPhone);
             } else {
-                localStorage.removeItem("tracked_teacher_phone");
+                localStorage.removeItem(`tracked_teacher_phone_${tidKey}`);
             }
+            localStorage.removeItem("tracked_teacher_phone");
+            localStorage.removeItem("tracked_phone");
 
             // Sync to Supabase Cloud
             if (window.TrackED_DB && typeof window.TrackED_DB.updateProfile === "function") {
@@ -249,20 +254,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const defaultTeacherAvatar = "../images/default-avatar.svg";
     const tidKey = (facultyId || "default").trim().toLowerCase().replace(/[^a-z0-9]/g, "_");
 
-    let savedAvatar = localStorage.getItem(`tracked_teacher_avatar_${tidKey}`) || 
-                      localStorage.getItem("tracked_teacher_avatar_data") || 
-                      localStorage.getItem("tracked_avatar_data");
-
-    // Clean out mock profile.jpg path if lingering
-    if (savedAvatar && (savedAvatar.includes("profile.jpg") || savedAvatar === "profile.jpg")) {
-        savedAvatar = null;
-        localStorage.removeItem(`tracked_teacher_avatar_${tidKey}`);
-        localStorage.removeItem("tracked_teacher_avatar_data");
-    }
-
-    const currentTeacherAvatar = savedAvatar || defaultTeacherAvatar;
-    if (settingsAvatarPreview) settingsAvatarPreview.src = currentTeacherAvatar;
-    if (headerProfileImg)      headerProfileImg.src      = currentTeacherAvatar;
+    const savedAvatar = localStorage.getItem(`tracked_teacher_avatar_${tidKey}`) || defaultTeacherAvatar;
+    if (settingsAvatarPreview) settingsAvatarPreview.src = savedAvatar;
+    if (headerProfileImg)      headerProfileImg.src      = savedAvatar;
 
     if (avatarFileInput) {
         avatarFileInput.addEventListener("change", (e) => {
@@ -274,7 +268,8 @@ document.addEventListener("DOMContentLoaded", () => {
                     if (settingsAvatarPreview) settingsAvatarPreview.src = dataUrl;
                     if (headerProfileImg)      headerProfileImg.src      = dataUrl;
                     localStorage.setItem(`tracked_teacher_avatar_${tidKey}`, dataUrl);
-                    localStorage.setItem("tracked_teacher_avatar_data", dataUrl);
+                    localStorage.removeItem("tracked_teacher_avatar_data");
+                    localStorage.removeItem("tracked_avatar_data");
 
                     // Sync to Supabase Cloud Database
                     if (window.TrackED_DB && typeof window.TrackED_DB.updateAvatar === "function") {
@@ -292,6 +287,7 @@ document.addEventListener("DOMContentLoaded", () => {
             if (headerProfileImg)      headerProfileImg.src      = defaultTeacherAvatar;
             localStorage.removeItem(`tracked_teacher_avatar_${tidKey}`);
             localStorage.removeItem("tracked_teacher_avatar_data");
+            localStorage.removeItem("tracked_avatar_data");
 
             // Sync avatar reset to Supabase Cloud Database
             if (window.TrackED_DB && typeof window.TrackED_DB.updateAvatar === "function") {
