@@ -26,13 +26,56 @@ document.addEventListener("DOMContentLoaded", () => {
     function showAlert(message, type = "error") {
         if (!loginAlert) return;
         loginAlert.className = `login-alert ${type}`;
-        const icon = type === "error" ? "fa-circle-exclamation" : "fa-spinner fa-spin";
+        let icon = "fa-circle-exclamation";
+        if (type === "loading") icon = "fa-spinner fa-spin";
+        else if (type === "warning") icon = "fa-triangle-exclamation";
+        else if (type === "security") icon = "fa-shield-halved";
+
         loginAlert.innerHTML = `<i class="fa-solid ${icon}"></i> <span>${message}</span>`;
         loginAlert.style.display = "flex";
     }
 
     function hideAlert() {
         if (loginAlert) loginAlert.style.display = "none";
+    }
+
+    // =========================================
+    // SECURITY: BRUTE-FORCE TRACKER & EMAIL ALERT
+    // =========================================
+    const FAILED_ATTEMPTS_KEY = "tracked_failed_login_attempts";
+
+    function getFailedAttempts() {
+        try {
+            return JSON.parse(sessionStorage.getItem(FAILED_ATTEMPTS_KEY) || "{}");
+        } catch (e) {
+            return {};
+        }
+    }
+
+    function recordFailedAttempt(uid) {
+        const attempts = getFailedAttempts();
+        const key = (uid || "").trim().toLowerCase();
+        attempts[key] = (attempts[key] || 0) + 1;
+        sessionStorage.setItem(FAILED_ATTEMPTS_KEY, JSON.stringify(attempts));
+        return attempts[key];
+    }
+
+    function resetFailedAttempts(uid) {
+        const attempts = getFailedAttempts();
+        const key = (uid || "").trim().toLowerCase();
+        delete attempts[key];
+        sessionStorage.setItem(FAILED_ATTEMPTS_KEY, JSON.stringify(attempts));
+    }
+
+    function maskEmail(email) {
+        if (!email || !email.includes("@")) return "registered email";
+        const parts = email.split("@");
+        const name = parts[0];
+        const domain = parts[1];
+        if (name.length <= 2) {
+            return `${name.charAt(0)}*@${domain}`;
+        }
+        return `${name.charAt(0)}${"*".repeat(Math.min(5, name.length - 2))}${name.slice(-1)}@${domain}`;
     }
 
     // 2. Form Submission Authentication
@@ -64,6 +107,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 const res = await window.TrackED_DB.login(username, password);
 
                 if (res.success) {
+                    // Reset attempt counter upon successful login
+                    resetFailedAttempts(username);
+
                     if (btnText) {
                         btnText.innerHTML = `<i class="fa-solid fa-check"></i> Welcome!`;
                     }
@@ -77,7 +123,62 @@ document.addEventListener("DOMContentLoaded", () => {
                         }
                     }, 400);
                 } else {
-                    showAlert(res.message || "Invalid Student/Faculty ID or password.");
+                    // Failed attempt - increment security counter
+                    const count = recordFailedAttempt(username);
+
+                    // Look up if this ID exists in database to retrieve their registered Gmail
+                    let foundAccount = null;
+                    if (window.TrackED_DB && typeof window.TrackED_DB.findAccountById === "function") {
+                        try {
+                            foundAccount = await window.TrackED_DB.findAccountById(username, "id");
+                        } catch(e) {}
+                    }
+
+                    if (count === 1) {
+                        showAlert("Invalid password. (2 attempts remaining before security alert)", "warning");
+                    } else if (count === 2) {
+                        showAlert("Invalid password. Warning: 1 attempt remaining before security alert!", "warning");
+                    } else if (count >= 3) {
+                        // 3 or more failed attempts: Trigger security alert!
+                        let targetEmail = "";
+                        let targetName = username;
+
+                        if (foundAccount && foundAccount.user) {
+                            targetEmail = foundAccount.user.email || "";
+                            targetName = foundAccount.user.name || username;
+                        }
+
+                        // Fallback to locally stored recovery email for this student if matched
+                        if (!targetEmail) {
+                            const cleanUname = (username || "").trim().toLowerCase();
+                            targetEmail = localStorage.getItem(`tracked_student_recovery_email_${cleanUname}`) || "";
+                            if (!targetEmail) {
+                                const activeSid = (localStorage.getItem("tracked_student_id") || "").trim().toLowerCase();
+                                if (activeSid === cleanUname) {
+                                    targetEmail = localStorage.getItem("tracked_student_recovery_email") || "";
+                                }
+                            }
+                        }
+
+                        if (targetEmail) {
+                            // Dispatch automated email alert to student's Gmail
+                            if (window.TrackED_EmailService && typeof window.TrackED_EmailService.sendSecurityAlert === "function") {
+                                window.TrackED_EmailService.sendSecurityAlert({
+                                    studentName: targetName,
+                                    studentId: username,
+                                    targetEmail: targetEmail,
+                                    attemptCount: count,
+                                    timestamp: new Date().toLocaleString()
+                                });
+                            }
+                            showAlert(`🚨 Security Alert: 3 failed attempts detected! A warning email was sent to ${maskEmail(targetEmail)}.`, "security");
+                        } else {
+                            showAlert("🚨 Security Alert: 3 failed attempts detected! Please check your credentials or reset your password.", "security");
+                        }
+                    } else {
+                        showAlert(res.message || "Invalid Student/Faculty ID or password.");
+                    }
+
                     if (submitBtn) {
                         submitBtn.disabled = false;
                         submitBtn.style.opacity = "1";

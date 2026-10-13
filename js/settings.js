@@ -24,10 +24,13 @@ document.addEventListener("DOMContentLoaded", () => {
     const studentName = localStorage.getItem("tracked_student_name") || "Billie Eilish";
     const studentId   = localStorage.getItem("tracked_student_id") || "2024-00123";
     const program     = localStorage.getItem("tracked_student_program") || "BS Computer Science • 2nd Year";
-    const savedRecoveryEmail = localStorage.getItem("tracked_student_recovery_email") || 
+    const currentSidKey = studentId.trim().toLowerCase();
+    const savedRecoveryEmail = localStorage.getItem(`tracked_student_recovery_email_${currentSidKey}`) ||
+                               localStorage.getItem("tracked_student_recovery_email") || 
                                localStorage.getItem("tracked_recovery_email") || 
                                "";
-    const savedPhone  = localStorage.getItem("tracked_student_phone") || 
+    const savedPhone  = localStorage.getItem(`tracked_student_phone_${currentSidKey}`) ||
+                        localStorage.getItem("tracked_student_phone") || 
                         localStorage.getItem("tracked_phone") || 
                         "";
 
@@ -207,18 +210,23 @@ document.addEventListener("DOMContentLoaded", () => {
             const updatedPhone = profilePhone ? profilePhone.value.trim() : "";
 
             // Save student recovery email and phone locally
+            const sidKey = (studentId || "").trim().toLowerCase();
             if (updatedEmail) {
                 localStorage.setItem("tracked_student_recovery_email", updatedEmail);
                 localStorage.setItem("tracked_recovery_email", updatedEmail);
+                if (sidKey) localStorage.setItem(`tracked_student_recovery_email_${sidKey}`, updatedEmail);
             } else {
                 localStorage.removeItem("tracked_student_recovery_email");
                 localStorage.removeItem("tracked_recovery_email");
+                if (sidKey) localStorage.removeItem(`tracked_student_recovery_email_${sidKey}`);
             }
 
             if (updatedPhone) {
                 localStorage.setItem("tracked_student_phone", updatedPhone);
+                if (sidKey) localStorage.setItem(`tracked_student_phone_${sidKey}`, updatedPhone);
             } else {
                 localStorage.removeItem("tracked_student_phone");
+                if (sidKey) localStorage.removeItem(`tracked_student_phone_${sidKey}`);
             }
 
             // Sync to Supabase Cloud

@@ -405,6 +405,13 @@ const SUPABASE_CONFIG = {
         },
 
         /**
+         * Alias for findUserForRecovery used by Security and Login trackers
+         */
+        findAccountById: async function (value, mode = "id") {
+            return this.findUserForRecovery(mode, value);
+        },
+
+        /**
          * Update password in Cloud & LocalStorage
          */
         updatePassword: async function (role, id, newPassword) {
