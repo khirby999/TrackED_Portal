@@ -252,7 +252,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const resetAvatarBtn         = document.getElementById("resetAvatarBtn");
 
     const defaultTeacherAvatar = "../images/default-avatar.svg";
-    const tidKey = (facultyId || "default").trim().toLowerCase().replace(/[^a-z0-9]/g, "_");
 
     const savedAvatar = localStorage.getItem(`tracked_teacher_avatar_${tidKey}`) || defaultTeacherAvatar;
     if (settingsAvatarPreview) settingsAvatarPreview.src = savedAvatar;

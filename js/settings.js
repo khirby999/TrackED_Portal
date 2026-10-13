@@ -24,15 +24,15 @@ document.addEventListener("DOMContentLoaded", () => {
     const studentName = localStorage.getItem("tracked_student_name") || "Billie Eilish";
     const studentId   = localStorage.getItem("tracked_student_id") || "2024-00123";
     const program     = localStorage.getItem("tracked_student_program") || "BS Computer Science • 2nd Year";
-    const currentSidKey = studentId.trim().toLowerCase();
+    const sidKey = studentId.trim().toLowerCase();
     // Scrub any legacy un-scoped shared keys to eliminate leakage
     localStorage.removeItem("tracked_recovery_email");
     localStorage.removeItem("tracked_student_recovery_email");
     localStorage.removeItem("tracked_phone");
     localStorage.removeItem("tracked_student_phone");
 
-    const savedRecoveryEmail = localStorage.getItem(`tracked_student_recovery_email_${currentSidKey}`) || "";
-    const savedPhone  = localStorage.getItem(`tracked_student_phone_${currentSidKey}`) || "";
+    const savedRecoveryEmail = localStorage.getItem(`tracked_student_recovery_email_${sidKey}`) || "";
+    const savedPhone  = localStorage.getItem(`tracked_student_phone_${sidKey}`) || "";
 
     const headerUserName      = document.getElementById("headerUserName");
     const avatarDisplayName   = document.getElementById("avatarDisplayName");
@@ -210,7 +210,6 @@ document.addEventListener("DOMContentLoaded", () => {
             const updatedPhone = profilePhone ? profilePhone.value.trim() : "";
 
             // Save student recovery email and phone locally strictly per-student
-            const sidKey = (studentId || "").trim().toLowerCase();
             if (updatedEmail) {
                 if (sidKey) localStorage.setItem(`tracked_student_recovery_email_${sidKey}`, updatedEmail);
             } else {
@@ -252,7 +251,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const headerProfileImg       = document.getElementById("headerProfileImg");
     const resetAvatarBtn         = document.getElementById("resetAvatarBtn");
 
-    const sidKey = studentId.trim().toLowerCase();
     const defaultStudentAvatar = (studentId === "2024-00123") ? "images/profile.jpg" : "images/default-avatar.svg";
     
     // Check per-student avatar strictly (never fall back to a shared key that leaks another student's photo)
