@@ -1267,7 +1267,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const studentCountBadge    = document.querySelector(".student-count");
 
     if (enrollForm && enrolledStudentsBody) {
-        const currentCourseKey = `tracked_enrolled_${activeCourseName || "Programming Fundamentals"}`;
+        const currentCourseName = activeCourseName || "Programming Fundamentals";
+        const currentCourseKey = `tracked_enrolled_${currentTidKey}_${currentCourseName}`;
 
         function getEnrolledStudents() {
             const raw = localStorage.getItem(currentCourseKey);
@@ -1300,6 +1301,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         function saveEnrolledStudents(list) {
             localStorage.setItem(currentCourseKey, JSON.stringify(list));
+            localStorage.setItem(`tracked_enrolled_${currentCourseName}`, JSON.stringify(list));
         }
 
         function renderEnrolledTable() {
@@ -1490,8 +1492,8 @@ document.addEventListener("DOMContentLoaded", () => {
     // HELPER: GET ENROLLED STUDENTS FOR ACTIVE COURSE
     // =========================================
     function getEnrolledStudentsForCourse(course) {
-        const key = `tracked_enrolled_${course}`;
-        const raw = localStorage.getItem(key);
+        const scopedKey = `tracked_enrolled_${currentTidKey}_${course}`;
+        const raw = localStorage.getItem(scopedKey);
         if (raw !== null) {
             try {
                 const parsed = JSON.parse(raw);
@@ -1533,8 +1535,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const activityAlertSuccessMsg = document.getElementById("activityAlertSuccessMsg");
 
     if (activityTableBody && addActivityBtn) {
-        const activitiesKey = `tracked_course_activities_${currentActiveCourse}`;
-        const scoresKey     = `tracked_activity_scores_${currentActiveCourse}`;
+        const activitiesKey = `tracked_course_activities_${currentTidKey}_${currentActiveCourse}`;
+        const scoresKey     = `tracked_activity_scores_${currentTidKey}_${currentActiveCourse}`;
 
         function getActivities() {
             const raw = localStorage.getItem(activitiesKey);
@@ -1563,10 +1565,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
         function saveActivitiesData() {
             localStorage.setItem(activitiesKey, JSON.stringify(currentActivities));
+            localStorage.setItem(`tracked_course_activities_${currentActiveCourse}`, JSON.stringify(currentActivities));
         }
 
         function saveScoresData() {
             localStorage.setItem(scoresKey, JSON.stringify(currentScores));
+            localStorage.setItem(`tracked_activity_scores_${currentActiveCourse}`, JSON.stringify(currentScores));
         }
 
         function getNextActivityNum() {
@@ -1829,8 +1833,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const quizAlertSuccessMsg = document.getElementById("quizAlertSuccessMsg");
 
     if (quizTableBody && addQuizBtn) {
-        const quizzesKey = `tracked_course_quizzes_${currentActiveCourse}`;
-        const scoresKey  = `tracked_quiz_scores_${currentActiveCourse}`;
+        const quizzesKey = `tracked_course_quizzes_${currentTidKey}_${currentActiveCourse}`;
+        const scoresKey  = `tracked_quiz_scores_${currentTidKey}_${currentActiveCourse}`;
 
         function getQuizzes() {
             const raw = localStorage.getItem(quizzesKey);
@@ -1859,10 +1863,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
         function saveQuizzesData() {
             localStorage.setItem(quizzesKey, JSON.stringify(currentQuizzes));
+            localStorage.setItem(`tracked_course_quizzes_${currentActiveCourse}`, JSON.stringify(currentQuizzes));
         }
 
         function saveQuizScoresData() {
             localStorage.setItem(scoresKey, JSON.stringify(currentQuizScores));
+            localStorage.setItem(`tracked_quiz_scores_${currentActiveCourse}`, JSON.stringify(currentQuizScores));
         }
 
         function getNextQuizNum() {
@@ -2116,8 +2122,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const examAlertSuccessMsg = document.getElementById("examAlertSuccessMsg");
 
     if (examTableBody && addExamBtn) {
-        const examsKey  = `tracked_course_exams_${currentActiveCourse}`;
-        const scoresKey = `tracked_exam_scores_${currentActiveCourse}`;
+        const examsKey  = `tracked_course_exams_${currentTidKey}_${currentActiveCourse}`;
+        const scoresKey = `tracked_exam_scores_${currentTidKey}_${currentActiveCourse}`;
 
         function getExams() {
             const raw = localStorage.getItem(examsKey);
@@ -2146,10 +2152,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
         function saveExamsData() {
             localStorage.setItem(examsKey, JSON.stringify(currentExams));
+            localStorage.setItem(`tracked_course_exams_${currentActiveCourse}`, JSON.stringify(currentExams));
         }
 
         function saveExamScoresData() {
             localStorage.setItem(scoresKey, JSON.stringify(currentExamScores));
+            localStorage.setItem(`tracked_exam_scores_${currentActiveCourse}`, JSON.stringify(currentExamScores));
         }
 
         function getNextExamNum() {
@@ -2397,7 +2405,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (attendanceTableBody && attendanceDateInput) {
         const enrolledStudents     = getEnrolledStudentsForCourse(currentActiveCourse);
-        const attendanceStorageKey = `tracked_course_attendance_${currentActiveCourse}`;
+        const attendanceStorageKey = `tracked_course_attendance_${currentTidKey}_${currentActiveCourse}`;
         const studentHistoryKey    = `tracked_attendance_${currentActiveCourse.trim().toLowerCase()}`;
 
         function getAllAttendanceRecords() {
@@ -2414,6 +2422,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         function saveAllAttendanceRecords() {
             localStorage.setItem(attendanceStorageKey, JSON.stringify(attendanceMap));
+            localStorage.setItem(`tracked_course_attendance_${currentActiveCourse}`, JSON.stringify(attendanceMap));
         }
 
         function formatDisplayDate(dateStr) {
