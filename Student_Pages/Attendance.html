@@ -81,9 +81,12 @@
             function formatDisplayDate(dateStr) {
                 if (!dateStr) return "";
                 try {
-                    const parts = dateStr.split("-");
+                    const parts = String(dateStr).trim().split("-");
                     if (parts.length === 3) {
-                        const dateObj = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+                        const y = parseInt(parts[0], 10);
+                        const m = parseInt(parts[1], 10) - 1;
+                        const d = parseInt(parts[2], 10);
+                        const dateObj = new Date(y, m, d);
                         return dateObj.toLocaleDateString("en-US", { month: "long", day: "2-digit", year: "numeric" });
                     }
                 } catch (e) {}
@@ -99,6 +102,14 @@
                     try { attendanceMap = JSON.parse(raw) || {}; } catch(e) {}
                 }
 
+                // Fallback check for case differences in course name
+                if (Object.keys(attendanceMap).length === 0) {
+                    const fallbackRaw = localStorage.getItem(`tracked_course_attendance_${activeCourse.trim().toLowerCase()}`);
+                    if (fallbackRaw) {
+                        try { attendanceMap = JSON.parse(fallbackRaw) || {}; } catch(e) {}
+                    }
+                }
+
                 const sid = currentStudentId.trim();
                 const sidLower = sid.toLowerCase();
                 let filteredRecords = [];
@@ -110,16 +121,37 @@
                     // Match this student by ID
                     const stStatus = dayMap[sid] || dayMap[sidLower];
                     if (stStatus) {
-                        const statusLower = stStatus.toLowerCase();
+                        const statusLower = String(stStatus).toLowerCase();
                         // Only show Late and Absent — Present records are not displayed
                         if (statusLower === "present") return;
-                        const statusStr = stStatus.charAt(0).toUpperCase() + stStatus.slice(1).toLowerCase();
+                        const statusStr = stStatus.charAt(0).toUpperCase() + statusLower.slice(1);
                         filteredRecords.push({
                             date: formatDisplayDate(d),
                             status: statusStr
                         });
                     }
                 });
+
+                // Fallback to per-student history key if course map had no records for this student
+                if (filteredRecords.length === 0) {
+                    const studentKey = `tracked_attendance_${activeCourse.trim().toLowerCase()}_${sidLower}`;
+                    const rawStudentHistory = localStorage.getItem(studentKey) || localStorage.getItem(`tracked_attendance_${activeCourse.trim().toLowerCase()}`);
+                    if (rawStudentHistory) {
+                        try {
+                            const parsedList = JSON.parse(rawStudentHistory);
+                            if (Array.isArray(parsedList)) {
+                                parsedList.forEach(item => {
+                                    if (item && item.date && item.status) {
+                                        filteredRecords.push({
+                                            date: item.date,
+                                            status: item.status
+                                        });
+                                    }
+                                });
+                            }
+                        } catch(e) {}
+                    }
+                }
 
                 if (tableBody) {
                     if (filteredRecords.length === 0) {

@@ -253,15 +253,51 @@ VALUES (
 -- ====================================================================
 -- 14. PERMISSIONS & ROW LEVEL SECURITY (RLS)
 -- ====================================================================
--- Ensure anon public API key has full read/write access for portal operations
-ALTER TABLE teachers DISABLE ROW LEVEL SECURITY;
-ALTER TABLE students DISABLE ROW LEVEL SECURITY;
-ALTER TABLE courses DISABLE ROW LEVEL SECURITY;
-ALTER TABLE course_enrollments DISABLE ROW LEVEL SECURITY;
-ALTER TABLE activities DISABLE ROW LEVEL SECURITY;
-ALTER TABLE activity_scores DISABLE ROW LEVEL SECURITY;
-ALTER TABLE quizzes DISABLE ROW LEVEL SECURITY;
-ALTER TABLE quiz_scores DISABLE ROW LEVEL SECURITY;
-ALTER TABLE exams DISABLE ROW LEVEL SECURITY;
-ALTER TABLE exam_scores DISABLE ROW LEVEL SECURITY;
-ALTER TABLE attendance DISABLE ROW LEVEL SECURITY;
+-- Enable Row Level Security to satisfy Supabase security audits,
+-- while granting full read/write policies to the TrackED client (anon & authenticated).
+
+ALTER TABLE teachers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE students ENABLE ROW LEVEL SECURITY;
+ALTER TABLE courses ENABLE ROW LEVEL SECURITY;
+ALTER TABLE course_enrollments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE activities ENABLE ROW LEVEL SECURITY;
+ALTER TABLE activity_scores ENABLE ROW LEVEL SECURITY;
+ALTER TABLE quizzes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE quiz_scores ENABLE ROW LEVEL SECURITY;
+ALTER TABLE exams ENABLE ROW LEVEL SECURITY;
+ALTER TABLE exam_scores ENABLE ROW LEVEL SECURITY;
+ALTER TABLE attendance ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "TrackED anon full access" ON teachers;
+CREATE POLICY "TrackED anon full access" ON teachers FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "TrackED anon full access" ON students;
+CREATE POLICY "TrackED anon full access" ON students FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "TrackED anon full access" ON courses;
+CREATE POLICY "TrackED anon full access" ON courses FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "TrackED anon full access" ON course_enrollments;
+CREATE POLICY "TrackED anon full access" ON course_enrollments FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "TrackED anon full access" ON activities;
+CREATE POLICY "TrackED anon full access" ON activities FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "TrackED anon full access" ON activity_scores;
+CREATE POLICY "TrackED anon full access" ON activity_scores FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "TrackED anon full access" ON quizzes;
+CREATE POLICY "TrackED anon full access" ON quizzes FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "TrackED anon full access" ON quiz_scores;
+CREATE POLICY "TrackED anon full access" ON quiz_scores FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "TrackED anon full access" ON exams;
+CREATE POLICY "TrackED anon full access" ON exams FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "TrackED anon full access" ON exam_scores;
+CREATE POLICY "TrackED anon full access" ON exam_scores FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "TrackED anon full access" ON attendance;
+CREATE POLICY "TrackED anon full access" ON attendance FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+

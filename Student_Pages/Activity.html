@@ -100,9 +100,19 @@
                 const sidLower = sid.toLowerCase();
                 const studentScores = scoresMap[sid] || scoresMap[sidLower] || {};
 
-                // Format today's date the same way attendance does: "Month DD, YYYY"
-                const today = new Date();
-                const formattedDate = today.toLocaleDateString("en-US", { month: "long", day: "2-digit", year: "numeric" });
+                // Permanent recorded date helper: locks in the date so it never shifts on future days
+                function getPersistentActivityDate(actObj) {
+                    if (actObj.date) return actObj.date;
+                    if (actObj.activityDate) return actObj.activityDate;
+                    const cacheKey = `tracked_activity_date_${activeCourse}_${actObj.num}`;
+                    let savedDate = localStorage.getItem(cacheKey);
+                    if (!savedDate) {
+                        const now = new Date();
+                        savedDate = now.toLocaleDateString("en-US", { month: "long", day: "2-digit", year: "numeric" });
+                        localStorage.setItem(cacheKey, savedDate);
+                    }
+                    return savedDate;
+                }
 
                 let records = [];
 
@@ -114,7 +124,7 @@
                         if (hasScore) {
                             records.push({
                                 number: act.name || `Activity ${act.num}`,
-                                date: formattedDate,
+                                date: getPersistentActivityDate(act),
                                 score: `${sc} / ${act.maxScore}`
                             });
                         }

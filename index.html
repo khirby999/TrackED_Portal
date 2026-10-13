@@ -17,53 +17,89 @@
 
     <header>
         <div class="left-menu">
-            <img src="images/TrackEd Logo 2.png" alt="TrackED Logo" class="logo">
+            <img src="images/CSU_Logo.png" alt="CSU Logo" class="logo csu-logo">
+            <img src="images/TrackEd Logo 2.png" alt="TrackED Logo" class="logo tracked-logo">
             <h4>TrackED Portal</h4>
         </div>
 
     </header>
 
-    <main>
-        <div class="welcome-content">
-            <div class="portal-badge">
-                <i class="fa-solid fa-graduation-cap"></i> Academic Portal
-            </div>
-            <h1>Welcome to TrackED</h1>
-            <p>
-                Track your academic progress, manage your records, and stay organized throughout your learning journey.
-            </p>
-        </div>
-        
-        <div class="login-container">
-            <div class="login-header">
-                <h2>Sign In</h2>
-                <p class="login-subtitle">Enter your ID and password to access your portal</p>
-            </div>
+    <main class="split-layout">
+        <section class="welcome-section">
+            <div class="floating-shape shape-left-1" data-speed="0.04"></div>
+            <div class="floating-shape shape-left-2" data-speed="0.02"></div>
 
-            <!-- Error / Status Alert Box -->
-            <div id="loginAlert" class="login-alert" style="display: none;"></div>
-
-            <form id="loginForm">
-                <div class="input-group">
-                    <i class="fa-solid fa-user icon"></i>
-                    <input type="text" id="username" placeholder="Student ID / Faculty ID" autocomplete="username" required>
+            <div class="welcome-content">
+                <div class="portal-badge">
+                    <i class="fa-solid fa-graduation-cap"></i> Academic Portal
                 </div>
-
-                <div class="input-group">
-                    <i class="fa-solid fa-lock icon"></i>
-                    <input type="password" id="password" placeholder="Enter your password" autocomplete="current-password" required>
-                    <i class="fa-solid fa-eye toggle-password" id="togglePassword" title="Toggle password visibility"></i>
-                </div>
-
-                <button type="submit" id="loginSubmitBtn" class="signin-btn">
-                    <span id="loginBtnText">Sign In</span> <i class="fa-solid fa-arrow-right"></i>
-                </button>
-
-                <p class="forgot-password">
-                    <a href="forgotPassword.html">Forgot Password?</a>
+                <h1>Welcome to TrackED</h1>
+                <p>
+                    Track your academic progress, manage your records, and stay organized throughout your learning journey.
                 </p>
-            </form>
-        </div>
+
+                <!-- Interactive Feature Highlights -->
+                <div class="feature-highlights">
+                    <div class="feature-chip">
+                        <div class="chip-icon"><i class="fa-solid fa-list-check"></i></div>
+                        <div class="chip-text">
+                            <strong>Activities, Quizzes & Exams</strong>
+                            <small>Track coursework, quizzes, and exam records</small>
+                        </div>
+                    </div>
+                    <div class="feature-chip">
+                        <div class="chip-icon"><i class="fa-solid fa-calendar-check"></i></div>
+                        <div class="chip-text">
+                            <strong>Class Records & Attendance</strong>
+                            <small>Monitor daily attendance logs and enrolled courses</small>
+                        </div>
+                    </div>
+                    <div class="feature-chip">
+                        <div class="chip-icon"><i class="fa-solid fa-shield-halved"></i></div>
+                        <div class="chip-text">
+                            <strong>Secure Campus Portal</strong>
+                            <small>Protected student & faculty database</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <section class="login-section">
+            <div class="floating-shape shape-right-1" data-speed="0.04"></div>
+            <div class="floating-shape shape-right-2" data-speed="0.025"></div>
+
+            <div class="login-container">
+                <div class="login-header">
+                    <h2>Sign In</h2>
+                    <p class="login-subtitle">Enter your ID and password to access your portal</p>
+                </div>
+
+                <!-- Error / Status Alert Box -->
+                <div id="loginAlert" class="login-alert" style="display: none;"></div>
+
+                <form id="loginForm">
+                    <div class="input-group">
+                        <i class="fa-solid fa-user icon"></i>
+                        <input type="text" id="username" placeholder="Student ID / Faculty ID" autocomplete="username" required>
+                    </div>
+
+                    <div class="input-group">
+                        <i class="fa-solid fa-lock icon"></i>
+                        <input type="password" id="password" placeholder="Enter your password" autocomplete="current-password" required>
+                        <i class="fa-solid fa-eye toggle-password" id="togglePassword" title="Toggle password visibility"></i>
+                    </div>
+
+                    <button type="submit" id="loginSubmitBtn" class="signin-btn">
+                        <span id="loginBtnText">Sign In</span> <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+
+                    <p class="forgot-password">
+                        <a href="forgotPassword.html">Forgot Password?</a>
+                    </p>
+                </form>
+            </div>
+        </section>
     </main>
 
     <footer>
@@ -78,6 +114,7 @@
     <!-- Supabase CDN + Backend Adapter -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/supabaseClient.js"></script>
+    <script src="js/interactivePortal.js"></script>
     <script src="js/index.js"></script>
 </body>
 

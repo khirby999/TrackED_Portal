@@ -2410,13 +2410,24 @@ document.addEventListener("DOMContentLoaded", () => {
         function formatDisplayDate(dateStr) {
             if (!dateStr) return "";
             try {
-                const parts = dateStr.split("-");
+                const parts = String(dateStr).trim().split("-");
                 if (parts.length === 3) {
-                    const dateObj = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+                    const y = parseInt(parts[0], 10);
+                    const m = parseInt(parts[1], 10) - 1;
+                    const d = parseInt(parts[2], 10);
+                    const dateObj = new Date(y, m, d);
                     return dateObj.toLocaleDateString("en-US", { month: "long", day: "2-digit", year: "numeric" });
                 }
             } catch (e) {}
             return dateStr;
+        }
+
+        function getTodayLocalDate() {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, "0");
+            const day = String(now.getDate()).padStart(2, "0");
+            return `${year}-${month}-${day}`;
         }
 
         function updateSelectStatusClass(selectEl) {
@@ -2500,10 +2511,14 @@ document.addEventListener("DOMContentLoaded", () => {
             });
         }
 
-        // Set default date to today
+        // Set default date: if teacher already recorded attendance, default to the most recent recorded date so they can review existing records; otherwise default to today's local date
+        const existingRecordedDates = Object.keys(attendanceMap).sort().reverse();
         if (!attendanceDateInput.value) {
-            const today = new Date().toISOString().split("T")[0];
-            attendanceDateInput.value = today;
+            if (existingRecordedDates.length > 0) {
+                attendanceDateInput.value = existingRecordedDates[0];
+            } else {
+                attendanceDateInput.value = getTodayLocalDate();
+            }
         }
 
         // Load initial date
@@ -2516,6 +2531,16 @@ document.addEventListener("DOMContentLoaded", () => {
                 loadAttendanceForDate(chosenDate);
             }
         });
+
+        // "Today" quick button
+        const todayDateBtn = document.getElementById("todayDateBtn");
+        if (todayDateBtn) {
+            todayDateBtn.addEventListener("click", () => {
+                const todayStr = getTodayLocalDate();
+                attendanceDateInput.value = todayStr;
+                loadAttendanceForDate(todayStr);
+            });
+        }
 
         // Save Attendance button handler
         if (saveAttendanceBtn) {
@@ -2539,7 +2564,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     if (stVal === "absent") absentCount++;
                 });
 
-                // Save for this date
+                // Save for this exact date key
                 attendanceMap[dateKey] = dayStatusMap;
                 saveAllAttendanceRecords();
 
@@ -2548,20 +2573,39 @@ document.addEventListener("DOMContentLoaded", () => {
                     window.TrackED_DB.saveAttendanceToCloud(currentActiveCourse, dateKey, dayStatusMap);
                 }
 
-                // Sync ONLY Late and Absent records into the student portal attendance history
-                const studentHistoryRecords = [];
+                // Sync Late and Absent records into student portal attendance history for ALL enrolled students
                 const sortedDates = Object.keys(attendanceMap).sort().reverse();
+                enrolledStudents.forEach(st => {
+                    const stHistoryKey = `tracked_attendance_${currentActiveCourse.trim().toLowerCase()}_${st.id.trim().toLowerCase()}`;
+                    const stHistoryRecords = [];
+                    sortedDates.forEach(d => {
+                        const stMap = attendanceMap[d];
+                        const status = stMap ? (stMap[st.id] || stMap[st.id.toLowerCase()]) : null;
+                        if (status === "late" || status === "absent") {
+                            stHistoryRecords.push({
+                                date: formatDisplayDate(d),
+                                status: status === "late" ? "Late" : "Absent"
+                            });
+                        }
+                    });
+                    localStorage.setItem(stHistoryKey, JSON.stringify(stHistoryRecords));
+                });
+
+                // Also populate studentHistoryKey for general fallback
+                const studentHistoryRecords = [];
                 sortedDates.forEach(d => {
                     const stMap = attendanceMap[d];
-                    const repStudent = enrolledStudents[0] || { id: "2024-00123" };
-                    const status = stMap[repStudent.id];
-                    // Only record late and absent!
-                    if (status === "late" || status === "absent") {
-                        studentHistoryRecords.push({
-                            date: formatDisplayDate(d),
-                            status: status === "late" ? "Late" : "Absent"
-                        });
-                    }
+                    if (!stMap) return;
+                    enrolledStudents.forEach(st => {
+                        const status = stMap[st.id] || stMap[st.id.toLowerCase()];
+                        if (status === "late" || status === "absent") {
+                            studentHistoryRecords.push({
+                                studentId: st.id,
+                                date: formatDisplayDate(d),
+                                status: status === "late" ? "Late" : "Absent"
+                            });
+                        }
+                    });
                 });
                 localStorage.setItem(studentHistoryKey, JSON.stringify(studentHistoryRecords));
 

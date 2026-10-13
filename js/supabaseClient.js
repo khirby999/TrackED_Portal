@@ -1332,13 +1332,18 @@ const SUPABASE_CONFIG = {
                             }
                         }
 
-                        // Attendance
+                        // Attendance: merge Cloud records without erasing local attendance
                         const { data: attRecords } = await client.from("attendance").select("*").eq("course_id", c.course_id);
-                        if (attRecords) {
-                            const attMap = {};
+                        if (attRecords && attRecords.length > 0) {
+                            let attMap = {};
+                            try {
+                                attMap = JSON.parse(localStorage.getItem(`tracked_course_attendance_${cName}`) || "{}");
+                            } catch (e) {}
                             attRecords.forEach(ar => {
-                                if (!attMap[ar.attendance_date]) attMap[ar.attendance_date] = {};
-                                attMap[ar.attendance_date][ar.student_id] = ar.status;
+                                if (ar.attendance_date) {
+                                    if (!attMap[ar.attendance_date]) attMap[ar.attendance_date] = {};
+                                    attMap[ar.attendance_date][ar.student_id] = ar.status;
+                                }
                             });
                             localStorage.setItem(`tracked_course_attendance_${cName}`, JSON.stringify(attMap));
                         }

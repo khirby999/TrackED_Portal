@@ -67,12 +67,15 @@
                         <p>Default status is Present. Mark students who are Late or Absent, then click Save Attendance.</p>
                     </div>
 
-                    <div class="date-container">
+                    <div class="date-container" style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
                         <label for="attendanceDate">
                             <i class="fa-solid fa-calendar-days"></i> Attendance Date
                         </label>
                         <input type="date" id="attendanceDate" name="attendanceDate">
                         <span class="attendance-date-badge new" id="attendanceDateBadge">New Date</span>
+                        <button type="button" id="todayDateBtn" title="Set to Today's date" style="background: #2563eb; color: #ffffff; border: none; padding: 6px 12px; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+                            <i class="fa-solid fa-clock"></i> Today
+                        </button>
                     </div>
                 </div>
 
