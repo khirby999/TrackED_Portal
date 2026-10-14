@@ -1517,6 +1517,16 @@ document.addEventListener("DOMContentLoaded", () => {
                     enrolledList = enrolledList.filter(s => s.id !== studentId);
                     saveEnrolledStudents(enrolledList);
 
+                    // Also immediately remove course from student's cached courses list
+                    const sidKey = (studentId || "").trim().toLowerCase();
+                    try {
+                        const stCourses = JSON.parse(localStorage.getItem(`tracked_student_courses_${sidKey}`) || "[]");
+                        if (Array.isArray(stCourses)) {
+                            const filteredCourses = stCourses.filter(c => (c.name || "").trim().toLowerCase() !== (activeCourseName || "Programming Fundamentals").trim().toLowerCase());
+                            localStorage.setItem(`tracked_student_courses_${sidKey}`, JSON.stringify(filteredCourses));
+                        }
+                    } catch(e) {}
+
                     // Sync unenrollment to Supabase Cloud if connected
                     if (window.TrackED_DB && typeof window.TrackED_DB.unenrollStudent === "function") {
                         window.TrackED_DB.unenrollStudent(activeCourseName || "Programming Fundamentals", studentId);
