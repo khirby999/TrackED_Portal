@@ -66,18 +66,18 @@
 
             console.log(`[Password Reset] Preparing OTP verification email for ${userName} -> ${targetEmail}`);
 
-            // 1. If EmailJS SDK is loaded and credentials provided, send real email to Gmail
-            if (window.emailjs && config.PUBLIC_KEY && config.PUBLIC_KEY !== "YOUR_PUBLIC_KEY") {
+            // 1. If EmailJS SDK is loaded and dedicated reset template is configured, send real email to Gmail
+            if (window.emailjs && config.PUBLIC_KEY && config.PUBLIC_KEY !== "YOUR_PUBLIC_KEY" && config.RESET_TEMPLATE_ID) {
                 try {
                     window.emailjs.init({ publicKey: config.PUBLIC_KEY });
                     const response = await window.emailjs.send(
                         config.SERVICE_ID,
-                        config.TEMPLATE_ID,
+                        config.RESET_TEMPLATE_ID,
                         {
                             to_email: targetEmail,
                             to_name: userName || "User",
-                            student_name: userName || "User",
-                            message: `Your TrackED Portal password reset verification code is: ${otpCode}. This code will expire in 10 minutes. If you did not request this, your account is safe and you can ignore this email.`
+                            otp_code: otpCode,
+                            message: `Your TrackED Portal password reset verification code is: ${otpCode}. This code will expire in 10 minutes.`
                         }
                     );
                     console.log("[Password Reset] OTP email dispatched via EmailJS:", response);
@@ -90,6 +90,49 @@
             // 2. Safe Fallback & Console Audit Log
             console.log(`%c[TrackED Password Reset OTP] CODE FOR ${targetEmail}: ${otpCode}`, "color: #10b981; font-weight: bold; font-size: 15px;");
             return { success: true, method: "logged", otpCode };
+        },
+
+        /**
+         * Dispatches a secure one-click Password Reset Link email via EmailJS
+         * @param {Object} details
+         * @param {string} details.userName
+         * @param {string} details.targetEmail
+         * @param {string} details.resetLink
+         */
+        sendPasswordResetLink: async function(details) {
+            const { userName, targetEmail, resetLink } = details;
+            const config = window.TRACKED_EMAIL_CONFIG || {};
+
+            console.log(`[Password Reset Link] Preparing email for ${userName} -> ${targetEmail}`);
+            console.log(`[Password Reset Link URL] ${resetLink}`);
+
+            const templateToUse = config.RESET_TEMPLATE_ID || config.TEMPLATE_ID;
+
+            if (window.emailjs && config.PUBLIC_KEY && config.PUBLIC_KEY !== "YOUR_PUBLIC_KEY" && templateToUse) {
+                try {
+                    window.emailjs.init({ publicKey: config.PUBLIC_KEY });
+                    const response = await window.emailjs.send(
+                        config.SERVICE_ID,
+                        templateToUse,
+                        {
+                            to_email: targetEmail,
+                            email: targetEmail,
+                            to_name: userName || "User",
+                            reset_link: resetLink,
+                            link: resetLink,
+                            message: `Please click this link to reset your TrackED Portal password: ${resetLink}`
+                        }
+                    );
+                    console.log("[Password Reset Link] Email dispatched via EmailJS:", response);
+                    return { success: true, method: "emailjs", response };
+                } catch (err) {
+                    console.warn("[Password Reset Link] EmailJS send encountered an issue:", err);
+                    return { success: false, error: err };
+                }
+            }
+
+            console.log(`%c[TrackED Reset Link Fallback] RESET LINK FOR ${targetEmail}: ${resetLink}`, "color: #10b981; font-weight: bold; font-size: 14px;");
+            return { success: true, method: "logged", resetLink };
         }
     };
 })();
