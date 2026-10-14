@@ -502,11 +502,88 @@ const SUPABASE_CONFIG = {
         },
 
         /**
+         * Verify a user's current password against Cloud DB or Local Cache
+         * @param {string} role - "teacher" or "student"
+         * @param {string} id - Teacher ID or Student ID
+         * @param {string} enteredPassword - Password entered by user
+         * @returns {Promise<boolean>}
+         */
+        verifyPassword: async function (role, id, enteredPassword) {
+            const cleanId = (id || "").trim();
+            const inputPwd = (enteredPassword || "").trim();
+            if (!cleanId || !inputPwd) return false;
+
+            const client = getClient();
+            if (role === "teacher") {
+                const tidKey = cleanId.toLowerCase().replace(/[^a-z0-9]/g, "_");
+                if (client) {
+                    try {
+                        const { data: t } = await client
+                            .from("teachers")
+                            .select("password")
+                            .or(`teacher_id.ilike.${cleanId},email.ilike.${cleanId}`)
+                            .maybeSingle();
+                        if (t && t.password) {
+                            return t.password === inputPwd;
+                        }
+                    } catch (e) {}
+                }
+                const localPwd = localStorage.getItem(`tracked_teacher_pwd_${tidKey}`) ||
+                                 localStorage.getItem("tracked_teacher_password");
+                if (localPwd) return localPwd === inputPwd;
+
+                try {
+                    const localTeachers = JSON.parse(localStorage.getItem("tracked_database_teachers") || "[]");
+                    const found = localTeachers.find(t => {
+                        const tid = t.teacher_id || t.id || "";
+                        return tid.toLowerCase() === cleanId.toLowerCase() || (t.email && t.email.toLowerCase() === cleanId.toLowerCase());
+                    });
+                    if (found && found.password) return found.password === inputPwd;
+                } catch (e) {}
+
+                if (cleanId.toLowerCase() === DEFAULT_TEACHER.id.toLowerCase()) {
+                    return inputPwd === DEFAULT_TEACHER.password;
+                }
+                return false;
+            } else {
+                const sidKey = cleanId.toLowerCase();
+                if (client) {
+                    try {
+                        const { data: s } = await client
+                            .from("students")
+                            .select("password")
+                            .or(`student_id.ilike.${cleanId},email.ilike.${cleanId}`)
+                            .maybeSingle();
+                        if (s && s.password) {
+                            return s.password === inputPwd;
+                        }
+                    } catch (e) {}
+                }
+                const localPwd = localStorage.getItem(`tracked_student_pwd_${sidKey}`) ||
+                                 localStorage.getItem("tracked_student_password");
+                if (localPwd) return localPwd === inputPwd;
+
+                try {
+                    const localStudents = JSON.parse(localStorage.getItem("tracked_database_students") || "[]");
+                    const found = localStudents.find(s => {
+                        const sid = s.id || s.student_id || "";
+                        return sid.toLowerCase() === sidKey || (s.email && s.email.toLowerCase() === sidKey);
+                    });
+                    if (found && found.password) return found.password === inputPwd;
+                } catch (e) {}
+
+                return false;
+            }
+        },
+
+        /**
          * Update password in Cloud & LocalStorage
          */
         updatePassword: async function (role, id, newPassword) {
             const client = getClient();
             if (role === "teacher") {
+                const tidKey = (id || "").trim().toLowerCase().replace(/[^a-z0-9]/g, "_");
+                localStorage.setItem(`tracked_teacher_pwd_${tidKey}`, newPassword);
                 localStorage.setItem("tracked_teacher_password", newPassword);
                 localStorage.setItem("tracked_teacher_password_changed", "true");
 
@@ -1505,13 +1582,22 @@ const SUPABASE_CONFIG = {
                         }
                     }
                     const sidLower = (currentSid || "").trim().toLowerCase();
-                    const mappedCourses = dbCourses.map(c => ({
-                        code: c.course_code || "CS",
-                        name: c.course_name,
-                        instructor: "Instructor",
-                        icon: "fa-graduation-cap",
-                        colorClass: "tab-course"
-                    }));
+                    const mappedCourses = dbCourses.map(c => {
+                        let instructorName = "Instructor";
+                        if (c.teacher_id && Array.isArray(dbTeachers)) {
+                            const foundTeacher = dbTeachers.find(t => (t.teacher_id || "").toLowerCase() === c.teacher_id.toLowerCase());
+                            if (foundTeacher && foundTeacher.name) {
+                                instructorName = foundTeacher.name;
+                            }
+                        }
+                        return {
+                            code: c.course_code || "CS",
+                            name: c.course_name,
+                            instructor: instructorName,
+                            icon: "fa-graduation-cap",
+                            colorClass: "tab-course"
+                        };
+                    });
                     if (sidLower) {
                         localStorage.setItem(`tracked_student_courses_${sidLower}`, JSON.stringify(mappedCourses));
                     }
@@ -1536,7 +1622,6 @@ const SUPABASE_CONFIG = {
                             };
                         });
                         localStorage.setItem(`tracked_enrolled_${courseTidKey}_${cName}`, JSON.stringify(enrolledStudents));
-                        localStorage.setItem(`tracked_enrolled_${tidKey}_${cName}`, JSON.stringify(enrolledStudents));
                         localStorage.setItem(`tracked_enrolled_${cName}`, JSON.stringify(enrolledStudents));
                     }
 
@@ -1545,7 +1630,6 @@ const SUPABASE_CONFIG = {
                     if (acts) {
                         const actList = acts.map(a => ({ num: a.activity_number, name: a.activity_name, maxScore: a.max_score }));
                         localStorage.setItem(`tracked_course_activities_${courseTidKey}_${cName}`, JSON.stringify(actList));
-                        localStorage.setItem(`tracked_course_activities_${tidKey}_${cName}`, JSON.stringify(actList));
                         localStorage.setItem(`tracked_course_activities_${cName}`, JSON.stringify(actList));
                         const actIds = acts.map(a => a.activity_id);
                         if (actIds.length > 0) {
@@ -1554,7 +1638,6 @@ const SUPABASE_CONFIG = {
                                 let scoreMap = {};
                                 try {
                                     scoreMap = JSON.parse(localStorage.getItem(`tracked_activity_scores_${courseTidKey}_${cName}`) ||
-                                                          localStorage.getItem(`tracked_activity_scores_${tidKey}_${cName}`) ||
                                                           localStorage.getItem(`tracked_activity_scores_${cName}`) || "{}");
                                 } catch (e) {}
                                 aScores.forEach(sc => {
@@ -1565,7 +1648,6 @@ const SUPABASE_CONFIG = {
                                     }
                                 });
                                 localStorage.setItem(`tracked_activity_scores_${courseTidKey}_${cName}`, JSON.stringify(scoreMap));
-                                localStorage.setItem(`tracked_activity_scores_${tidKey}_${cName}`, JSON.stringify(scoreMap));
                                 localStorage.setItem(`tracked_activity_scores_${cName}`, JSON.stringify(scoreMap));
                             }
                         }
@@ -1576,7 +1658,6 @@ const SUPABASE_CONFIG = {
                     if (quizzes) {
                         const qList = quizzes.map(q => ({ num: q.quiz_number, name: q.quiz_name, maxScore: q.max_score }));
                         localStorage.setItem(`tracked_course_quizzes_${courseTidKey}_${cName}`, JSON.stringify(qList));
-                        localStorage.setItem(`tracked_course_quizzes_${tidKey}_${cName}`, JSON.stringify(qList));
                         localStorage.setItem(`tracked_course_quizzes_${cName}`, JSON.stringify(qList));
                         const qIds = quizzes.map(q => q.quiz_id);
                         if (qIds.length > 0) {
@@ -1585,7 +1666,6 @@ const SUPABASE_CONFIG = {
                                 let scoreMap = {};
                                 try {
                                     scoreMap = JSON.parse(localStorage.getItem(`tracked_quiz_scores_${courseTidKey}_${cName}`) ||
-                                                          localStorage.getItem(`tracked_quiz_scores_${tidKey}_${cName}`) ||
                                                           localStorage.getItem(`tracked_quiz_scores_${cName}`) || "{}");
                                 } catch (e) {}
                                 qScores.forEach(sc => {
@@ -1596,7 +1676,6 @@ const SUPABASE_CONFIG = {
                                     }
                                 });
                                 localStorage.setItem(`tracked_quiz_scores_${courseTidKey}_${cName}`, JSON.stringify(scoreMap));
-                                localStorage.setItem(`tracked_quiz_scores_${tidKey}_${cName}`, JSON.stringify(scoreMap));
                                 localStorage.setItem(`tracked_quiz_scores_${cName}`, JSON.stringify(scoreMap));
                             }
                         }
@@ -1607,7 +1686,6 @@ const SUPABASE_CONFIG = {
                     if (exams) {
                         const exList = exams.map(x => ({ num: x.exam_number, name: x.exam_name, maxScore: x.max_score }));
                         localStorage.setItem(`tracked_course_exams_${courseTidKey}_${cName}`, JSON.stringify(exList));
-                        localStorage.setItem(`tracked_course_exams_${tidKey}_${cName}`, JSON.stringify(exList));
                         localStorage.setItem(`tracked_course_exams_${cName}`, JSON.stringify(exList));
                         const exIds = exams.map(x => x.exam_id);
                         if (exIds.length > 0) {
@@ -1616,7 +1694,6 @@ const SUPABASE_CONFIG = {
                                 let scoreMap = {};
                                 try {
                                     scoreMap = JSON.parse(localStorage.getItem(`tracked_exam_scores_${courseTidKey}_${cName}`) ||
-                                                          localStorage.getItem(`tracked_exam_scores_${tidKey}_${cName}`) ||
                                                           localStorage.getItem(`tracked_exam_scores_${cName}`) || "{}");
                                 } catch (e) {}
                                 exScores.forEach(sc => {
@@ -1627,7 +1704,6 @@ const SUPABASE_CONFIG = {
                                     }
                                 });
                                 localStorage.setItem(`tracked_exam_scores_${courseTidKey}_${cName}`, JSON.stringify(scoreMap));
-                                localStorage.setItem(`tracked_exam_scores_${tidKey}_${cName}`, JSON.stringify(scoreMap));
                                 localStorage.setItem(`tracked_exam_scores_${cName}`, JSON.stringify(scoreMap));
                             }
                         }
@@ -1639,7 +1715,6 @@ const SUPABASE_CONFIG = {
                         let attMap = {};
                         try {
                             attMap = JSON.parse(localStorage.getItem(`tracked_course_attendance_${courseTidKey}_${cName}`) ||
-                                                localStorage.getItem(`tracked_course_attendance_${tidKey}_${cName}`) ||
                                                 localStorage.getItem(`tracked_course_attendance_${cName}`) || "{}");
                         } catch (e) {}
                         attRecords.forEach(ar => {
@@ -1649,7 +1724,6 @@ const SUPABASE_CONFIG = {
                             }
                         });
                         localStorage.setItem(`tracked_course_attendance_${courseTidKey}_${cName}`, JSON.stringify(attMap));
-                        localStorage.setItem(`tracked_course_attendance_${tidKey}_${cName}`, JSON.stringify(attMap));
                         localStorage.setItem(`tracked_course_attendance_${cName}`, JSON.stringify(attMap));
                     }
                 }
@@ -2053,6 +2127,7 @@ const SUPABASE_CONFIG = {
                 "tracked_teacher_name",
                 "tracked_teacher_dept",
                 "tracked_teacher_courses",
+                "tracked_teacher_password",
                 "tracked_teacher_password_changed",
                 "tracked_selected_course",
                 "tracked_selected_course_code",

@@ -113,10 +113,17 @@
     <script src="../js/supabaseClient.js"></script>
     <script>
         document.addEventListener("DOMContentLoaded", () => {
+            const userRole = localStorage.getItem("tracked_user_role");
+            const studentId = localStorage.getItem("tracked_student_id");
+            if (userRole !== "student" || !studentId) {
+                window.location.href = "../index.html";
+                return;
+            }
+
             // Load selected course
             const activeCourse = localStorage.getItem("tracked_student_selected_course") || "Programming Fundamentals";
             const activeCode   = localStorage.getItem("tracked_student_selected_course_code") || "CS101";
-            const instructor   = localStorage.getItem("tracked_student_selected_instructor") || "Prof. Billie Eilish";
+            const instructor   = localStorage.getItem("tracked_student_selected_instructor") || "Instructor";
 
             const courseHeading    = document.getElementById("courseHeading");
             const courseInstructor = document.getElementById("courseInstructor");

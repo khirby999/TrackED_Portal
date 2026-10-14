@@ -1,14 +1,18 @@
 document.addEventListener("DOMContentLoaded", () => {
-    // Mark current session as teacher
-    localStorage.setItem("tracked_user_role", "teacher");
+    // 0. Session & Role Verification Guard
+    const userRole = localStorage.getItem("tracked_user_role");
+    const currentTeacherId = localStorage.getItem("tracked_teacher_id");
+    if (userRole !== "teacher" || !currentTeacherId) {
+        window.location.href = "../index.html";
+        return;
+    }
 
     // =========================================
     // LOAD LOGGED-IN TEACHER PROFILE & AVATAR
     // =========================================
-    const currentTeacherName = localStorage.getItem("tracked_teacher_name") || "Billie Eilish";
-    const currentTeacherId   = localStorage.getItem("tracked_teacher_id") || "T-2024-0042";
+    const currentTeacherName = localStorage.getItem("tracked_teacher_name") || "Faculty";
     const currentTeacherDept = localStorage.getItem("tracked_teacher_dept") || "College of Computer Studies";
-    const currentTidKey      = (currentTeacherId || "default").trim().toLowerCase().replace(/[^a-z0-9]/g, "_");
+    const currentTidKey      = currentTeacherId.trim().toLowerCase().replace(/[^a-z0-9]/g, "_");
     const defaultTeacherAvatar = "../images/default-avatar.svg";
 
     // Course helpers scoped to active teacher ID
@@ -16,10 +20,6 @@ document.addEventListener("DOMContentLoaded", () => {
         const scoped = localStorage.getItem(`tracked_teacher_courses_${currentTidKey}`);
         if (scoped !== null) {
             try { return JSON.parse(scoped) || []; } catch(e) {}
-        }
-        const legacy = localStorage.getItem("tracked_teacher_courses");
-        if (legacy !== null) {
-            try { return JSON.parse(legacy) || []; } catch(e) {}
         }
         return [];
     }
@@ -1219,6 +1219,15 @@ document.addEventListener("DOMContentLoaded", () => {
             localStorage.setItem(`tracked_course_exams_${courseName}`, JSON.stringify([]));
             localStorage.setItem(`tracked_exam_scores_${courseName}`, JSON.stringify({}));
             localStorage.setItem(`tracked_course_attendance_${courseName}`, JSON.stringify({}));
+
+            localStorage.setItem(`tracked_enrolled_${currentTidKey}_${courseName}`, JSON.stringify([]));
+            localStorage.setItem(`tracked_course_activities_${currentTidKey}_${courseName}`, JSON.stringify([]));
+            localStorage.setItem(`tracked_activity_scores_${currentTidKey}_${courseName}`, JSON.stringify({}));
+            localStorage.setItem(`tracked_course_quizzes_${currentTidKey}_${courseName}`, JSON.stringify([]));
+            localStorage.setItem(`tracked_quiz_scores_${currentTidKey}_${courseName}`, JSON.stringify({}));
+            localStorage.setItem(`tracked_course_exams_${currentTidKey}_${courseName}`, JSON.stringify([]));
+            localStorage.setItem(`tracked_exam_scores_${currentTidKey}_${courseName}`, JSON.stringify({}));
+            localStorage.setItem(`tracked_course_attendance_${currentTidKey}_${courseName}`, JSON.stringify({}));
 
             // Render immediately
             renderCourseCard(newCourse);

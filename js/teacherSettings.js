@@ -1,4 +1,12 @@
 document.addEventListener("DOMContentLoaded", () => {
+    // 0. Session & Role Verification Guard
+    const userRole = localStorage.getItem("tracked_user_role");
+    const facultyId = localStorage.getItem("tracked_teacher_id");
+    if (userRole !== "teacher" || !facultyId) {
+        window.location.href = "../index.html";
+        return;
+    }
+
     // =========================================
     // ACCOUNT DROPDOWN
     // =========================================
@@ -21,10 +29,9 @@ document.addEventListener("DOMContentLoaded", () => {
     // =========================================
     // LOAD SAVED TEACHER PROFILE DATA
     // =========================================
-    const teacherName = localStorage.getItem("tracked_teacher_name") || "Billie Eilish";
-    const facultyId   = localStorage.getItem("tracked_teacher_id") || "FAC-2026-001";
+    const teacherName = localStorage.getItem("tracked_teacher_name") || "Faculty";
     const department  = localStorage.getItem("tracked_teacher_dept") || "College of Computer Studies";
-    const tidKey      = (facultyId || "default").trim().toLowerCase().replace(/[^a-z0-9]/g, "_");
+    const tidKey      = facultyId.trim().toLowerCase().replace(/[^a-z0-9]/g, "_");
     // Scrub any legacy un-scoped shared keys to eliminate leakage
     localStorage.removeItem("tracked_recovery_email");
     localStorage.removeItem("tracked_teacher_recovery_email");
@@ -140,7 +147,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     if (changePasswordForm) {
-        changePasswordForm.addEventListener("submit", (e) => {
+        changePasswordForm.addEventListener("submit", async (e) => {
             e.preventDefault();
 
             if (pwdSuccessAlert) pwdSuccessAlert.style.display = "none";
@@ -168,6 +175,15 @@ document.addEventListener("DOMContentLoaded", () => {
             if (currentVal === newVal) {
                 showPwdError("New password must be different from current password.");
                 return;
+            }
+
+            // Verify that the entered current password matches actual password
+            if (window.TrackED_DB && typeof window.TrackED_DB.verifyPassword === "function") {
+                const isCurrentCorrect = await window.TrackED_DB.verifyPassword("teacher", facultyId, currentVal);
+                if (!isCurrentCorrect) {
+                    showPwdError("Current password is incorrect. Please enter your existing password.");
+                    return;
+                }
             }
 
             // Save new password

@@ -75,8 +75,14 @@
     <script src="../js/supabaseClient.js"></script>
     <script>
         document.addEventListener("DOMContentLoaded", () => {
+            const userRole = localStorage.getItem("tracked_user_role");
+            const currentStudentId = localStorage.getItem("tracked_student_id");
+            if (userRole !== "student" || !currentStudentId) {
+                window.location.href = "../index.html";
+                return;
+            }
+
             const activeCourse     = localStorage.getItem("tracked_student_selected_course") || "Programming Fundamentals";
-            const currentStudentId = localStorage.getItem("tracked_student_id") || "2024-00123";
             const tableBody        = document.getElementById("quizTableBody");
 
             function renderQuizTable() {

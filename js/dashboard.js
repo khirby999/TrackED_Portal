@@ -1,13 +1,17 @@
 document.addEventListener("DOMContentLoaded", () => {
-    // Mark current session as student
-    localStorage.setItem("tracked_user_role", "student");
+    // 0. Session & Role Verification Guard
+    const userRole = localStorage.getItem("tracked_user_role");
+    const currentStudentId = localStorage.getItem("tracked_student_id");
+    if (userRole !== "student" || !currentStudentId) {
+        window.location.href = "index.html";
+        return;
+    }
 
     // =========================================
     // LOAD CURRENT LOGGED-IN STUDENT PROFILE
     // =========================================
-    const currentStudentName = localStorage.getItem("tracked_student_name") || "Billie Eilish";
-    const currentStudentId   = localStorage.getItem("tracked_student_id") || "2024-00123";
-    const rawProgram         = localStorage.getItem("tracked_student_program") || "BS Computer Science • 2nd Year";
+    const currentStudentName = localStorage.getItem("tracked_student_name") || "Student";
+    const rawProgram         = localStorage.getItem("tracked_student_program") || "BS Computer Science • 1st Year";
     
     let displayProgram = "BS Computer Science";
     let displayYear    = "2nd Year";
@@ -116,13 +120,23 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         // 2. Fallback: inspect tracked_enrolled_* keys in localStorage
+        const seenNames = new Set(enrolledCourses.map(c => c.name.toLowerCase()));
         Object.keys(localStorage).forEach(k => {
             if (k.startsWith("tracked_enrolled_")) {
-                const courseName = k.replace("tracked_enrolled_", "").trim();
+                let courseName = k.replace("tracked_enrolled_", "").trim();
                 if (!courseName) return;
+
+                // Skip internal teacher-scoped keys like tracked_enrolled_t_2024_0042_Calculus or tracked_enrolled_2026_0045_Calculus
+                if (/^(t_\d+_\d+|\d+_\d+|r_\d+)_/i.test(courseName)) {
+                    return;
+                }
+
+                if (seenNames.has(courseName.toLowerCase())) return;
+
                 try {
                     const enrollList = JSON.parse(localStorage.getItem(k) || "[]");
                     if (Array.isArray(enrollList) && enrollList.some(s => s && s.id && s.id.trim().toLowerCase() === sid)) {
+                        seenNames.add(courseName.toLowerCase());
                         enrolledCourses.push({
                             code: "CS",
                             name: courseName,
