@@ -396,6 +396,26 @@ tbody tr:hover td {
     box-shadow: 0 0 0 3px rgba(6, 6, 207, 0.12);
 }
 
+.score-input-wrap.invalid {
+    border-color: #ef4444;
+    background: #fef2f2;
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2);
+}
+
+.score-input-wrap.invalid:focus-within {
+    border-color: #dc2626;
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.25);
+}
+
+.score-input-wrap.invalid .score-num-input {
+    color: #b91c1c;
+}
+
+.score-input-wrap.invalid .score-max-label {
+    color: #ef4444;
+    font-weight: 600;
+}
+
 .score-num-input {
     width: 48px;
     border: none;
@@ -651,6 +671,17 @@ tbody tr:hover td {
 
 .modal-alert.success i {
     color: #059669;
+    font-size: 15px;
+}
+
+.modal-alert.error {
+    background: #fef2f2;
+    color: #991b1b;
+    border: 1px solid #fecaca;
+}
+
+.modal-alert.error i {
+    color: #dc2626;
     font-size: 15px;
 }
 

@@ -1262,10 +1262,14 @@ const SUPABASE_CONFIG = {
             try {
                 const courseId = await this._getCourseId(courseName);
                 if (!courseId) return false;
-                const { data: acts } = await client.from("activities").select("activity_id, activity_number").eq("course_id", courseId);
+                const { data: acts } = await client.from("activities").select("activity_id, activity_number, max_score").eq("course_id", courseId);
                 if (!acts || acts.length === 0) return false;
                 const actMap = {};
-                acts.forEach(a => { actMap[a.activity_number] = a.activity_id; });
+                const actMaxMap = {};
+                acts.forEach(a => { 
+                    actMap[a.activity_number] = a.activity_id;
+                    actMaxMap[a.activity_number] = parseFloat(a.max_score) || 50;
+                });
 
                 const rows = [];
                 Object.keys(scoresMap).forEach(sid => {
@@ -1273,10 +1277,16 @@ const SUPABASE_CONFIG = {
                     Object.keys(stObj).forEach(actNum => {
                         const actId = actMap[actNum];
                         if (actId) {
+                            let sc = parseFloat(stObj[actNum]);
+                            if (isNaN(sc)) sc = 0;
+                            const maxVal = actMaxMap[actNum] !== undefined ? actMaxMap[actNum] : 50;
+                            if (sc > maxVal) sc = maxVal;
+                            if (sc < 0) sc = 0;
+
                             rows.push({
                                 activity_id: actId,
                                 student_id: sid.trim(),
-                                score: parseFloat(stObj[actNum]) || 0
+                                score: sc
                             });
                         }
                     });
@@ -1324,10 +1334,14 @@ const SUPABASE_CONFIG = {
             try {
                 const courseId = await this._getCourseId(courseName);
                 if (!courseId) return false;
-                const { data: quizzes } = await client.from("quizzes").select("quiz_id, quiz_number").eq("course_id", courseId);
+                const { data: quizzes } = await client.from("quizzes").select("quiz_id, quiz_number, max_score").eq("course_id", courseId);
                 if (!quizzes || quizzes.length === 0) return false;
                 const quizMap = {};
-                quizzes.forEach(q => { quizMap[q.quiz_number] = q.quiz_id; });
+                const quizMaxMap = {};
+                quizzes.forEach(q => { 
+                    quizMap[q.quiz_number] = q.quiz_id;
+                    quizMaxMap[q.quiz_number] = parseFloat(q.max_score) || 20;
+                });
 
                 const rows = [];
                 Object.keys(scoresMap).forEach(sid => {
@@ -1335,10 +1349,16 @@ const SUPABASE_CONFIG = {
                     Object.keys(stObj).forEach(qNum => {
                         const qId = quizMap[qNum];
                         if (qId) {
+                            let sc = parseFloat(stObj[qNum]);
+                            if (isNaN(sc)) sc = 0;
+                            const maxVal = quizMaxMap[qNum] !== undefined ? quizMaxMap[qNum] : 20;
+                            if (sc > maxVal) sc = maxVal;
+                            if (sc < 0) sc = 0;
+
                             rows.push({
                                 quiz_id: qId,
                                 student_id: sid.trim(),
-                                score: parseFloat(stObj[qNum]) || 0
+                                score: sc
                             });
                         }
                     });
@@ -1386,10 +1406,14 @@ const SUPABASE_CONFIG = {
             try {
                 const courseId = await this._getCourseId(courseName);
                 if (!courseId) return false;
-                const { data: exams } = await client.from("exams").select("exam_id, exam_number").eq("course_id", courseId);
+                const { data: exams } = await client.from("exams").select("exam_id, exam_number, max_score").eq("course_id", courseId);
                 if (!exams || exams.length === 0) return false;
                 const exMap = {};
-                exams.forEach(x => { exMap[x.exam_number] = x.exam_id; });
+                const exMaxMap = {};
+                exams.forEach(x => { 
+                    exMap[x.exam_number] = x.exam_id;
+                    exMaxMap[x.exam_number] = parseFloat(x.max_score) || 100;
+                });
 
                 const rows = [];
                 Object.keys(scoresMap).forEach(sid => {
@@ -1397,10 +1421,16 @@ const SUPABASE_CONFIG = {
                     Object.keys(stObj).forEach(xNum => {
                         const xId = exMap[xNum];
                         if (xId) {
+                            let sc = parseFloat(stObj[xNum]);
+                            if (isNaN(sc)) sc = 0;
+                            const maxVal = exMaxMap[xNum] !== undefined ? exMaxMap[xNum] : 100;
+                            if (sc > maxVal) sc = maxVal;
+                            if (sc < 0) sc = 0;
+
                             rows.push({
                                 exam_id: xId,
                                 student_id: sid.trim(),
-                                score: parseFloat(stObj[xNum]) || 0
+                                score: sc
                             });
                         }
                     });

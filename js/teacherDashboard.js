@@ -1675,9 +1675,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 currentActivities.forEach(act => {
                     const stScores = currentScores[st.id] || {};
                     const val = (stScores[act.num] !== undefined && stScores[act.num] !== null) ? stScores[act.num] : "";
+                    const isInvalid = val !== "" && (Number(val) > act.maxScore || Number(val) < 0);
+                    const invalidClass = isInvalid ? " invalid" : "";
+                    const invalidTitle = isInvalid ? `title="Score cannot exceed maximum of ${act.maxScore}"` : "";
                     rowHtml += `
                         <td class="score-cell">
-                            <div class="score-input-wrap">
+                            <div class="score-input-wrap${invalidClass}">
                                 <input 
                                     type="number" 
                                     class="score-num-input" 
@@ -1687,6 +1690,7 @@ document.addEventListener("DOMContentLoaded", () => {
                                     max="${act.maxScore}" 
                                     value="${val}" 
                                     placeholder="0"
+                                    ${invalidTitle}
                                 >
                                 <span class="score-max-label">/ ${act.maxScore}</span>
                             </div>
@@ -1696,6 +1700,36 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 tr.innerHTML = rowHtml;
                 activityTableBody.appendChild(tr);
+            });
+        }
+
+        // Real-time score validation on input
+        if (activityTableBody) {
+            activityTableBody.addEventListener("input", (e) => {
+                const inp = e.target.closest(".score-num-input");
+                if (!inp) return;
+                const maxVal = parseFloat(inp.getAttribute("max"));
+                const rawVal = inp.value.trim();
+                const wrap = inp.closest(".score-input-wrap");
+                if (!wrap) return;
+
+                if (rawVal === "") {
+                    wrap.classList.remove("invalid");
+                    inp.removeAttribute("title");
+                    return;
+                }
+
+                const num = parseFloat(rawVal);
+                if (num > maxVal) {
+                    wrap.classList.add("invalid");
+                    inp.title = `Score cannot exceed the maximum score of ${maxVal}`;
+                } else if (num < 0) {
+                    wrap.classList.add("invalid");
+                    inp.title = "Score cannot be negative";
+                } else {
+                    wrap.classList.remove("invalid");
+                    inp.removeAttribute("title");
+                }
             });
         }
 
@@ -1793,6 +1827,68 @@ document.addEventListener("DOMContentLoaded", () => {
         if (saveScoresBtn) {
             saveScoresBtn.addEventListener("click", () => {
                 const inputs = activityTableBody.querySelectorAll(".score-num-input");
+                let hasError = false;
+                let firstInvalidInp = null;
+                let errorMsg = "";
+
+                // 1. Strict validation against maximum scores
+                inputs.forEach(inp => {
+                    const sId = inp.getAttribute("data-student-id");
+                    const aNum = inp.getAttribute("data-act-num");
+                    const maxVal = parseFloat(inp.getAttribute("max"));
+                    const rawVal = inp.value.trim();
+                    const wrap = inp.closest(".score-input-wrap");
+
+                    if (rawVal !== "") {
+                        const num = parseFloat(rawVal);
+                        if (isNaN(num)) {
+                            hasError = true;
+                            if (wrap) wrap.classList.add("invalid");
+                            if (!firstInvalidInp) {
+                                firstInvalidInp = inp;
+                                errorMsg = "Please enter valid numeric scores.";
+                            }
+                        } else if (num > maxVal) {
+                            hasError = true;
+                            if (wrap) wrap.classList.add("invalid");
+                            if (!firstInvalidInp) {
+                                firstInvalidInp = inp;
+                                const actObj = currentActivities.find(a => a.num == aNum);
+                                const actName = actObj ? actObj.name : `Activity ${aNum}`;
+                                errorMsg = `Cannot save: Score (${num}) for ${actName} exceeds the maximum score of ${maxVal}!`;
+                            }
+                        } else if (num < 0) {
+                            hasError = true;
+                            if (wrap) wrap.classList.add("invalid");
+                            if (!firstInvalidInp) {
+                                firstInvalidInp = inp;
+                                errorMsg = "Cannot save: Scores cannot be negative!";
+                            }
+                        } else {
+                            if (wrap) wrap.classList.remove("invalid");
+                        }
+                    } else {
+                        if (wrap) wrap.classList.remove("invalid");
+                    }
+                });
+
+                if (hasError) {
+                    if (firstInvalidInp) {
+                        firstInvalidInp.focus();
+                        firstInvalidInp.select();
+                    }
+                    if (activityAlertSuccess && activityAlertSuccessMsg) {
+                        activityAlertSuccess.className = "modal-alert error";
+                        const icon = activityAlertSuccess.querySelector("i");
+                        if (icon) icon.className = "fa-solid fa-circle-exclamation";
+                        activityAlertSuccessMsg.textContent = errorMsg;
+                        activityAlertSuccess.style.display = "flex";
+                        activityAlertSuccess.scrollIntoView({ behavior: "smooth", block: "nearest" });
+                    }
+                    return; // STRICTLY PREVENT SAVING
+                }
+
+                // 2. All scores are valid - proceed with save
                 inputs.forEach(inp => {
                     const sId = inp.getAttribute("data-student-id");
                     const aNum = inp.getAttribute("data-act-num");
@@ -1828,6 +1924,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 saveScoresBtn.style.backgroundColor = "#059669";
 
                 if (activityAlertSuccess && activityAlertSuccessMsg) {
+                    activityAlertSuccess.className = "modal-alert success";
+                    const icon = activityAlertSuccess.querySelector("i");
+                    if (icon) icon.className = "fa-solid fa-circle-check";
                     activityAlertSuccessMsg.textContent = "All student activity scores have been saved successfully!";
                     activityAlertSuccess.style.display = "flex";
                 }
@@ -1971,9 +2070,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 currentQuizzes.forEach(q => {
                     const stScores = currentQuizScores[st.id] || {};
                     const val = (stScores[q.num] !== undefined && stScores[q.num] !== null) ? stScores[q.num] : "";
+                    const isInvalid = val !== "" && (Number(val) > q.maxScore || Number(val) < 0);
+                    const invalidClass = isInvalid ? " invalid" : "";
+                    const invalidTitle = isInvalid ? `title="Score cannot exceed maximum of ${q.maxScore}"` : "";
                     rowHtml += `
                         <td class="score-cell">
-                            <div class="score-input-wrap">
+                            <div class="score-input-wrap${invalidClass}">
                                 <input 
                                     type="number" 
                                     class="score-num-input" 
@@ -1983,6 +2085,7 @@ document.addEventListener("DOMContentLoaded", () => {
                                     max="${q.maxScore}" 
                                     value="${val}" 
                                     placeholder="0"
+                                    ${invalidTitle}
                                 >
                                 <span class="score-max-label">/ ${q.maxScore}</span>
                             </div>
@@ -1992,6 +2095,36 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 tr.innerHTML = rowHtml;
                 quizTableBody.appendChild(tr);
+            });
+        }
+
+        // Real-time score validation on input for quizzes
+        if (quizTableBody) {
+            quizTableBody.addEventListener("input", (e) => {
+                const inp = e.target.closest(".score-num-input");
+                if (!inp) return;
+                const maxVal = parseFloat(inp.getAttribute("max"));
+                const rawVal = inp.value.trim();
+                const wrap = inp.closest(".score-input-wrap");
+                if (!wrap) return;
+
+                if (rawVal === "") {
+                    wrap.classList.remove("invalid");
+                    inp.removeAttribute("title");
+                    return;
+                }
+
+                const num = parseFloat(rawVal);
+                if (num > maxVal) {
+                    wrap.classList.add("invalid");
+                    inp.title = `Score cannot exceed the maximum score of ${maxVal}`;
+                } else if (num < 0) {
+                    wrap.classList.add("invalid");
+                    inp.title = "Score cannot be negative";
+                } else {
+                    wrap.classList.remove("invalid");
+                    inp.removeAttribute("title");
+                }
             });
         }
 
@@ -2084,6 +2217,68 @@ document.addEventListener("DOMContentLoaded", () => {
         if (saveQuizScoresBtn) {
             saveQuizScoresBtn.addEventListener("click", () => {
                 const inputs = quizTableBody.querySelectorAll(".score-num-input");
+                let hasError = false;
+                let firstInvalidInp = null;
+                let errorMsg = "";
+
+                // 1. Strict validation against maximum scores
+                inputs.forEach(inp => {
+                    const sId = inp.getAttribute("data-student-id");
+                    const qNum = inp.getAttribute("data-quiz-num");
+                    const maxVal = parseFloat(inp.getAttribute("max"));
+                    const rawVal = inp.value.trim();
+                    const wrap = inp.closest(".score-input-wrap");
+
+                    if (rawVal !== "") {
+                        const num = parseFloat(rawVal);
+                        if (isNaN(num)) {
+                            hasError = true;
+                            if (wrap) wrap.classList.add("invalid");
+                            if (!firstInvalidInp) {
+                                firstInvalidInp = inp;
+                                errorMsg = "Please enter valid numeric scores.";
+                            }
+                        } else if (num > maxVal) {
+                            hasError = true;
+                            if (wrap) wrap.classList.add("invalid");
+                            if (!firstInvalidInp) {
+                                firstInvalidInp = inp;
+                                const qObj = currentQuizzes.find(q => q.num == qNum);
+                                const qName = qObj ? qObj.name : `Quiz ${qNum}`;
+                                errorMsg = `Cannot save: Score (${num}) for ${qName} exceeds the maximum score of ${maxVal}!`;
+                            }
+                        } else if (num < 0) {
+                            hasError = true;
+                            if (wrap) wrap.classList.add("invalid");
+                            if (!firstInvalidInp) {
+                                firstInvalidInp = inp;
+                                errorMsg = "Cannot save: Scores cannot be negative!";
+                            }
+                        } else {
+                            if (wrap) wrap.classList.remove("invalid");
+                        }
+                    } else {
+                        if (wrap) wrap.classList.remove("invalid");
+                    }
+                });
+
+                if (hasError) {
+                    if (firstInvalidInp) {
+                        firstInvalidInp.focus();
+                        firstInvalidInp.select();
+                    }
+                    if (quizAlertSuccess && quizAlertSuccessMsg) {
+                        quizAlertSuccess.className = "modal-alert error";
+                        const icon = quizAlertSuccess.querySelector("i");
+                        if (icon) icon.className = "fa-solid fa-circle-exclamation";
+                        quizAlertSuccessMsg.textContent = errorMsg;
+                        quizAlertSuccess.style.display = "flex";
+                        quizAlertSuccess.scrollIntoView({ behavior: "smooth", block: "nearest" });
+                    }
+                    return; // STRICTLY PREVENT SAVING
+                }
+
+                // 2. All scores are valid - proceed with save
                 inputs.forEach(inp => {
                     const sId = inp.getAttribute("data-student-id");
                     const qNum = inp.getAttribute("data-quiz-num");
@@ -2117,6 +2312,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 saveQuizScoresBtn.style.backgroundColor = "#059669";
 
                 if (quizAlertSuccess && quizAlertSuccessMsg) {
+                    quizAlertSuccess.className = "modal-alert success";
+                    const icon = quizAlertSuccess.querySelector("i");
+                    if (icon) icon.className = "fa-solid fa-circle-check";
                     quizAlertSuccessMsg.textContent = "All student quiz scores have been saved successfully!";
                     quizAlertSuccess.style.display = "flex";
                 }
@@ -2260,9 +2458,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 currentExams.forEach(ex => {
                     const stScores = currentExamScores[st.id] || {};
                     const val = (stScores[ex.num] !== undefined && stScores[ex.num] !== null) ? stScores[ex.num] : "";
+                    const isInvalid = val !== "" && (Number(val) > ex.maxScore || Number(val) < 0);
+                    const invalidClass = isInvalid ? " invalid" : "";
+                    const invalidTitle = isInvalid ? `title="Score cannot exceed maximum of ${ex.maxScore}"` : "";
                     rowHtml += `
                         <td class="score-cell">
-                            <div class="score-input-wrap">
+                            <div class="score-input-wrap${invalidClass}">
                                 <input 
                                     type="number" 
                                     class="score-num-input" 
@@ -2272,6 +2473,7 @@ document.addEventListener("DOMContentLoaded", () => {
                                     max="${ex.maxScore}" 
                                     value="${val}" 
                                     placeholder="0"
+                                    ${invalidTitle}
                                 >
                                 <span class="score-max-label">/ ${ex.maxScore}</span>
                             </div>
@@ -2281,6 +2483,36 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 tr.innerHTML = rowHtml;
                 examTableBody.appendChild(tr);
+            });
+        }
+
+        // Real-time score validation on input for exams
+        if (examTableBody) {
+            examTableBody.addEventListener("input", (e) => {
+                const inp = e.target.closest(".score-num-input");
+                if (!inp) return;
+                const maxVal = parseFloat(inp.getAttribute("max"));
+                const rawVal = inp.value.trim();
+                const wrap = inp.closest(".score-input-wrap");
+                if (!wrap) return;
+
+                if (rawVal === "") {
+                    wrap.classList.remove("invalid");
+                    inp.removeAttribute("title");
+                    return;
+                }
+
+                const num = parseFloat(rawVal);
+                if (num > maxVal) {
+                    wrap.classList.add("invalid");
+                    inp.title = `Score cannot exceed the maximum score of ${maxVal}`;
+                } else if (num < 0) {
+                    wrap.classList.add("invalid");
+                    inp.title = "Score cannot be negative";
+                } else {
+                    wrap.classList.remove("invalid");
+                    inp.removeAttribute("title");
+                }
             });
         }
 
@@ -2373,6 +2605,68 @@ document.addEventListener("DOMContentLoaded", () => {
         if (saveExamScoresBtn) {
             saveExamScoresBtn.addEventListener("click", () => {
                 const inputs = examTableBody.querySelectorAll(".score-num-input");
+                let hasError = false;
+                let firstInvalidInp = null;
+                let errorMsg = "";
+
+                // 1. Strict validation against maximum scores
+                inputs.forEach(inp => {
+                    const sId = inp.getAttribute("data-student-id");
+                    const exNum = inp.getAttribute("data-exam-num");
+                    const maxVal = parseFloat(inp.getAttribute("max"));
+                    const rawVal = inp.value.trim();
+                    const wrap = inp.closest(".score-input-wrap");
+
+                    if (rawVal !== "") {
+                        const num = parseFloat(rawVal);
+                        if (isNaN(num)) {
+                            hasError = true;
+                            if (wrap) wrap.classList.add("invalid");
+                            if (!firstInvalidInp) {
+                                firstInvalidInp = inp;
+                                errorMsg = "Please enter valid numeric scores.";
+                            }
+                        } else if (num > maxVal) {
+                            hasError = true;
+                            if (wrap) wrap.classList.add("invalid");
+                            if (!firstInvalidInp) {
+                                firstInvalidInp = inp;
+                                const exObj = currentExams.find(ex => ex.num == exNum);
+                                const exName = exObj ? exObj.name : `Exam ${exNum}`;
+                                errorMsg = `Cannot save: Score (${num}) for ${exName} exceeds the maximum score of ${maxVal}!`;
+                            }
+                        } else if (num < 0) {
+                            hasError = true;
+                            if (wrap) wrap.classList.add("invalid");
+                            if (!firstInvalidInp) {
+                                firstInvalidInp = inp;
+                                errorMsg = "Cannot save: Scores cannot be negative!";
+                            }
+                        } else {
+                            if (wrap) wrap.classList.remove("invalid");
+                        }
+                    } else {
+                        if (wrap) wrap.classList.remove("invalid");
+                    }
+                });
+
+                if (hasError) {
+                    if (firstInvalidInp) {
+                        firstInvalidInp.focus();
+                        firstInvalidInp.select();
+                    }
+                    if (examAlertSuccess && examAlertSuccessMsg) {
+                        examAlertSuccess.className = "modal-alert error";
+                        const icon = examAlertSuccess.querySelector("i");
+                        if (icon) icon.className = "fa-solid fa-circle-exclamation";
+                        examAlertSuccessMsg.textContent = errorMsg;
+                        examAlertSuccess.style.display = "flex";
+                        examAlertSuccess.scrollIntoView({ behavior: "smooth", block: "nearest" });
+                    }
+                    return; // STRICTLY PREVENT SAVING
+                }
+
+                // 2. All scores are valid - proceed with save
                 inputs.forEach(inp => {
                     const sId = inp.getAttribute("data-student-id");
                     const exNum = inp.getAttribute("data-exam-num");
@@ -2406,6 +2700,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 saveExamScoresBtn.style.backgroundColor = "#059669";
 
                 if (examAlertSuccess && examAlertSuccessMsg) {
+                    examAlertSuccess.className = "modal-alert success";
+                    const icon = examAlertSuccess.querySelector("i");
+                    if (icon) icon.className = "fa-solid fa-circle-check";
                     examAlertSuccessMsg.textContent = "All student exam scores have been saved successfully!";
                     examAlertSuccess.style.display = "flex";
                 }
