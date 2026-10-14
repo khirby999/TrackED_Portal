@@ -1241,7 +1241,17 @@ document.addEventListener("DOMContentLoaded", () => {
     // =========================================
     // DYNAMIC COURSE HEADER SYNC ON SUBPAGES
     // =========================================
-    const activeCourseName = localStorage.getItem("tracked_selected_course");
+    let activeCourseName = localStorage.getItem("tracked_selected_course");
+    if (!activeCourseName) {
+        const savedCourses = getTeacherCourses();
+        if (savedCourses.length > 0 && savedCourses[0].name) {
+            activeCourseName = savedCourses[0].name;
+            localStorage.setItem("tracked_selected_course", activeCourseName);
+            if (savedCourses[0].code) {
+                localStorage.setItem("tracked_selected_course_code", savedCourses[0].code);
+            }
+        }
+    }
     if (activeCourseName) {
         // Sync course title on teacherCourse.html (#courseName)
         const courseHeading = document.getElementById("courseName");
@@ -1297,12 +1307,12 @@ document.addEventListener("DOMContentLoaded", () => {
         const currentCourseKey = `tracked_enrolled_${currentTidKey}_${currentCourseName}`;
 
         function getEnrolledStudents() {
-            const raw = localStorage.getItem(currentCourseKey);
-            let list = [];
+            let raw = localStorage.getItem(currentCourseKey);
             if (raw === null) {
-                list = [];
-                localStorage.setItem(currentCourseKey, JSON.stringify([]));
-            } else {
+                raw = localStorage.getItem(`tracked_enrolled_${currentCourseName}`);
+            }
+            let list = [];
+            if (raw !== null) {
                 try {
                     list = JSON.parse(raw) || [];
                 } catch (e) {
@@ -1519,7 +1529,10 @@ document.addEventListener("DOMContentLoaded", () => {
     // =========================================
     function getEnrolledStudentsForCourse(course) {
         const scopedKey = `tracked_enrolled_${currentTidKey}_${course}`;
-        const raw = localStorage.getItem(scopedKey);
+        let raw = localStorage.getItem(scopedKey);
+        if (raw === null) {
+            raw = localStorage.getItem(`tracked_enrolled_${course}`);
+        }
         if (raw !== null) {
             try {
                 const parsed = JSON.parse(raw);
@@ -1565,7 +1578,10 @@ document.addEventListener("DOMContentLoaded", () => {
         const scoresKey     = `tracked_activity_scores_${currentTidKey}_${currentActiveCourse}`;
 
         function getActivities() {
-            const raw = localStorage.getItem(activitiesKey);
+            let raw = localStorage.getItem(activitiesKey);
+            if (raw === null) {
+                raw = localStorage.getItem(`tracked_course_activities_${currentActiveCourse}`);
+            }
             if (raw !== null) {
                 try {
                     const parsed = JSON.parse(raw);
@@ -1576,7 +1592,10 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         function getScores() {
-            const raw = localStorage.getItem(scoresKey);
+            let raw = localStorage.getItem(scoresKey);
+            if (raw === null) {
+                raw = localStorage.getItem(`tracked_activity_scores_${currentActiveCourse}`);
+            }
             if (raw !== null) {
                 try {
                     return JSON.parse(raw) || {};
@@ -1587,7 +1606,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
         let currentActivities  = getActivities();
         let currentScores      = getScores();
-        const enrolledStudents = getEnrolledStudentsForCourse(currentActiveCourse);
 
         function saveActivitiesData() {
             localStorage.setItem(activitiesKey, JSON.stringify(currentActivities));
@@ -1606,6 +1624,10 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         function renderActivityTable() {
+            currentActivities = getActivities();
+            currentScores = getScores();
+            const enrolledStudents = getEnrolledStudentsForCourse(currentActiveCourse);
+
             // Render Head
             if (activityTableHead) {
                 let thHtml = `
@@ -1735,6 +1757,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // Initial render
         renderActivityTable();
+
+        // Reactive cloud sync listener
+        window.addEventListener("tracked_sync_completed", () => {
+            renderActivityTable();
+        });
 
         // Modal triggers
         let pendingActNum = getNextActivityNum();
@@ -1905,8 +1932,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 // Sync with student portal localStorage key: tracked_activity_${currentCourse}
                 const studentStorageKey = `tracked_activity_${currentActiveCourse.trim().toLowerCase()}`;
+                const activeEnrolled = getEnrolledStudentsForCourse(currentActiveCourse);
                 const syncRecords = currentActivities.map(act => {
-                    const repStudent = enrolledStudents[0] || { id: "2024-00123" };
+                    const repStudent = activeEnrolled[0] || { id: "2024-00123" };
                     const sc = currentScores[repStudent.id]?.[act.num] !== undefined
                         ? currentScores[repStudent.id][act.num]
                         : "";
@@ -1962,7 +1990,10 @@ document.addEventListener("DOMContentLoaded", () => {
         const scoresKey  = `tracked_quiz_scores_${currentTidKey}_${currentActiveCourse}`;
 
         function getQuizzes() {
-            const raw = localStorage.getItem(quizzesKey);
+            let raw = localStorage.getItem(quizzesKey);
+            if (raw === null) {
+                raw = localStorage.getItem(`tracked_course_quizzes_${currentActiveCourse}`);
+            }
             if (raw !== null) {
                 try {
                     const parsed = JSON.parse(raw);
@@ -1973,7 +2004,10 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         function getQuizScores() {
-            const raw = localStorage.getItem(scoresKey);
+            let raw = localStorage.getItem(scoresKey);
+            if (raw === null) {
+                raw = localStorage.getItem(`tracked_quiz_scores_${currentActiveCourse}`);
+            }
             if (raw !== null) {
                 try {
                     return JSON.parse(raw) || {};
@@ -1984,7 +2018,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
         let currentQuizzes     = getQuizzes();
         let currentQuizScores  = getQuizScores();
-        const enrolledStudents = getEnrolledStudentsForCourse(currentActiveCourse);
 
         function saveQuizzesData() {
             localStorage.setItem(quizzesKey, JSON.stringify(currentQuizzes));
@@ -2003,6 +2036,9 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         function renderQuizTable() {
+            currentQuizzes = getQuizzes();
+            currentQuizScores = getQuizScores();
+            const enrolledStudents = getEnrolledStudentsForCourse(currentActiveCourse);
             if (quizTableHead) {
                 let thHtml = `
                     <tr>
@@ -2129,6 +2165,11 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         renderQuizTable();
+
+        // Reactive cloud sync listener
+        window.addEventListener("tracked_sync_completed", () => {
+            renderQuizTable();
+        });
 
         let pendingQuizNum = getNextQuizNum();
         function openAddQuizModal() {
@@ -2294,8 +2335,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
 
                 const studentStorageKey = `tracked_quizzes_${currentActiveCourse.trim().toLowerCase()}`;
+                const activeEnrolled = getEnrolledStudentsForCourse(currentActiveCourse);
                 const syncRecords = currentQuizzes.map(q => {
-                    const repStudent = enrolledStudents[0] || { id: "2024-00123" };
+                    const repStudent = activeEnrolled[0] || { id: "2024-00123" };
                     const sc = currentQuizScores[repStudent.id]?.[q.num] !== undefined
                         ? currentQuizScores[repStudent.id][q.num]
                         : "";
@@ -2350,7 +2392,10 @@ document.addEventListener("DOMContentLoaded", () => {
         const scoresKey = `tracked_exam_scores_${currentTidKey}_${currentActiveCourse}`;
 
         function getExams() {
-            const raw = localStorage.getItem(examsKey);
+            let raw = localStorage.getItem(examsKey);
+            if (raw === null) {
+                raw = localStorage.getItem(`tracked_course_exams_${currentActiveCourse}`);
+            }
             if (raw !== null) {
                 try {
                     const parsed = JSON.parse(raw);
@@ -2361,7 +2406,10 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         function getExamScores() {
-            const raw = localStorage.getItem(scoresKey);
+            let raw = localStorage.getItem(scoresKey);
+            if (raw === null) {
+                raw = localStorage.getItem(`tracked_exam_scores_${currentActiveCourse}`);
+            }
             if (raw !== null) {
                 try {
                     return JSON.parse(raw) || {};
@@ -2372,7 +2420,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
         let currentExams       = getExams();
         let currentExamScores  = getExamScores();
-        const enrolledStudents = getEnrolledStudentsForCourse(currentActiveCourse);
 
         function saveExamsData() {
             localStorage.setItem(examsKey, JSON.stringify(currentExams));
@@ -2391,6 +2438,9 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         function renderExamTable() {
+            currentExams = getExams();
+            currentExamScores = getExamScores();
+            const enrolledStudents = getEnrolledStudentsForCourse(currentActiveCourse);
             if (examTableHead) {
                 let thHtml = `
                     <tr>
@@ -2517,6 +2567,11 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         renderExamTable();
+
+        // Reactive cloud sync listener
+        window.addEventListener("tracked_sync_completed", () => {
+            renderExamTable();
+        });
 
         let pendingExamNum = getNextExamNum();
         function openAddExamModal() {
@@ -2682,8 +2737,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
 
                 const studentStorageKey = `tracked_exams_${currentActiveCourse.trim().toLowerCase()}`;
+                const activeEnrolled = getEnrolledStudentsForCourse(currentActiveCourse);
                 const syncRecords = currentExams.map(ex => {
-                    const repStudent = enrolledStudents[0] || { id: "2024-00123" };
+                    const repStudent = activeEnrolled[0] || { id: "2024-00123" };
                     const sc = currentExamScores[repStudent.id]?.[ex.num] !== undefined
                         ? currentExamScores[repStudent.id][ex.num]
                         : "";
@@ -2732,7 +2788,10 @@ document.addEventListener("DOMContentLoaded", () => {
         const studentHistoryKey    = `tracked_attendance_${currentActiveCourse.trim().toLowerCase()}`;
 
         function getAllAttendanceRecords() {
-            const raw = localStorage.getItem(attendanceStorageKey);
+            let raw = localStorage.getItem(attendanceStorageKey);
+            if (raw === null) {
+                raw = localStorage.getItem(`tracked_course_attendance_${currentActiveCourse}`);
+            }
             if (raw !== null) {
                 try {
                     return JSON.parse(raw) || {};
@@ -2785,6 +2844,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // Render attendance table for a given date
         function loadAttendanceForDate(dateStr) {
+            attendanceMap = getAllAttendanceRecords();
+            const enrolledStudents = getEnrolledStudentsForCourse(currentActiveCourse);
             const hasRecord = Boolean(attendanceMap[dateStr]);
             const dayRecord = attendanceMap[dateStr] || {};
 
@@ -2883,6 +2944,14 @@ document.addEventListener("DOMContentLoaded", () => {
             });
         }
 
+        // Reactive cloud sync listener
+        window.addEventListener("tracked_sync_completed", () => {
+            attendanceMap = getAllAttendanceRecords();
+            if (attendanceDateInput && attendanceDateInput.value) {
+                loadAttendanceForDate(attendanceDateInput.value);
+            }
+        });
+
         // Save Attendance button handler
         if (saveAttendanceBtn) {
             saveAttendanceBtn.addEventListener("click", () => {
@@ -2915,8 +2984,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
 
                 // Sync Late and Absent records into student portal attendance history for ALL enrolled students
+                const activeEnrolled = getEnrolledStudentsForCourse(currentActiveCourse);
                 const sortedDates = Object.keys(attendanceMap).sort().reverse();
-                enrolledStudents.forEach(st => {
+                activeEnrolled.forEach(st => {
                     const stHistoryKey = `tracked_attendance_${currentActiveCourse.trim().toLowerCase()}_${st.id.trim().toLowerCase()}`;
                     const stHistoryRecords = [];
                     sortedDates.forEach(d => {
@@ -3006,6 +3076,11 @@ document.addEventListener("DOMContentLoaded", () => {
         pwdWarningOverlay.addEventListener("click", (e) => {
             if (e.target === pwdWarningOverlay) dismissTeacherPwdWarning();
         });
+    }
+
+    // Immediate cloud sync trigger on every teacher page load
+    if (window.TrackED_DB && typeof window.TrackED_DB.syncAllFromCloud === "function") {
+        window.TrackED_DB.syncAllFromCloud();
     }
 });
 
