@@ -17,9 +17,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const accountName         = document.getElementById("accountName");
     const accountSub          = document.getElementById("accountSub");
     const linkSentInstruction = document.getElementById("linkSentInstruction");
-    const directDemoLink      = document.getElementById("directDemoLink");
     const resendLinkBtn       = document.getElementById("resendLinkBtn");
-    const changeEmailBtn      = document.getElementById("changeEmailBtn");
 
     const formTitle           = document.getElementById("formTitle");
     const formSubtitle        = document.getElementById("formSubtitle");
@@ -134,10 +132,6 @@ document.addEventListener("DOMContentLoaded", () => {
                         linkSentInstruction.innerHTML = `We sent a secure password reset link to <strong>${escapeHTML(emailVal)}</strong>.<br>Please check your inbox (or spam folder) and click the link to set your new password.<br><small style="color: #64748b; font-size: 11px;">Link expires in 15 minutes.</small>`;
                     }
 
-                    if (directDemoLink) {
-                        directDemoLink.href = activeResetLink;
-                    }
-
                     // Account preview
                     if (accountName) accountName.textContent = verifiedUser.name || "User";
                     if (accountSub) accountSub.textContent = verifiedUser.program || (verifiedRole === "teacher" ? "Faculty Member" : "Student");
@@ -185,7 +179,6 @@ document.addEventListener("DOMContentLoaded", () => {
             }));
 
             activeResetLink = generateResetUrl(token, verifiedUser.id, verifiedRole, exp);
-            if (directDemoLink) directDemoLink.href = activeResetLink;
 
             if (window.TrackED_EmailService && typeof window.TrackED_EmailService.sendPasswordResetLink === "function") {
                 await window.TrackED_EmailService.sendPasswordResetLink({
@@ -198,30 +191,6 @@ document.addEventListener("DOMContentLoaded", () => {
             showMessage(`A new password reset link has been dispatched to ${maskEmail(currentTargetEmail)}!`, "success");
             resendLinkBtn.disabled = false;
             resendLinkBtn.innerHTML = '<i class="fa-solid fa-arrows-rotate"></i> Resend Email';
-        });
-    }
-
-    // ===================================================
-    // CHANGE EMAIL HANDLER (BACK TO STEP 1)
-    // ===================================================
-    if (changeEmailBtn) {
-        changeEmailBtn.addEventListener("click", () => {
-            hideMessage();
-            verifiedUser = null;
-            verifiedRole = null;
-            currentTargetEmail = "";
-            activeResetLink = "";
-
-            if (linkSentCard) linkSentCard.style.display = "none";
-            if (verifyForm) verifyForm.style.display = "block";
-
-            if (formTitle) formTitle.textContent = "Reset Password";
-            if (formSubtitle) formSubtitle.textContent = "Enter your registered email address to receive a secure password reset link.";
-
-            if (identifierInput) {
-                identifierInput.value = "";
-                setTimeout(() => identifierInput.focus(), 100);
-            }
         });
     }
 

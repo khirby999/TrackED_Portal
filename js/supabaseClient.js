@@ -124,33 +124,89 @@ const SUPABASE_CONFIG = {
 
             const client = getClient();
 
-            // 1. Try Cloud Database if configured
+            // 1. Try Cloud Database if configured (Authoritative Source of Truth)
             if (client) {
                 try {
-                    // Check teacher table
+                    // Check teacher table by ID or Email
                     const { data: teacher, error: teacherErr } = await client
                         .from("teachers")
                         .select("*")
                         .or(`teacher_id.ilike.${inputId},email.ilike.${inputId}`)
-                        .eq("password", inputPwd)
                         .maybeSingle();
 
-                    if (teacher && !teacherErr) {
-                        this._setTeacherSession(teacher);
-                        return { success: true, role: "teacher", user: teacher };
+                    if (!teacherErr && teacher) {
+                        // Account exists in Cloud Database!
+                        if (teacher.password === inputPwd) {
+                            // Update local storage caches to keep offline mode synchronized
+                            localStorage.setItem("tracked_teacher_password", teacher.password);
+                            localStorage.setItem("tracked_teacher_password_changed", "true");
+                            try {
+                                let lt = JSON.parse(localStorage.getItem("tracked_database_teachers") || "[]");
+                                let mod = false;
+                                lt = lt.map(t => {
+                                    const tid = t.teacher_id || t.id || "";
+                                    if (tid.toLowerCase() === teacher.teacher_id.toLowerCase() ||
+                                        (t.email && t.email.toLowerCase() === (teacher.email || "").toLowerCase())) {
+                                        t.password = teacher.password;
+                                        t.password_changed = true;
+                                        mod = true;
+                                    }
+                                    return t;
+                                });
+                                if (mod) localStorage.setItem("tracked_database_teachers", JSON.stringify(lt));
+                            } catch(e) {}
+
+                            this._setTeacherSession(teacher);
+                            return { success: true, role: "teacher", user: teacher };
+                        } else {
+                            // Password does NOT match the cloud record!
+                            // Strictly reject without falling through to local/default fallback.
+                            return {
+                                success: false,
+                                message: "Invalid password. Please verify your credentials."
+                            };
+                        }
                     }
 
-                    // Check student table
+                    // Check student table by ID or Email
                     const { data: student, error: studentErr } = await client
                         .from("students")
                         .select("*")
                         .or(`student_id.ilike.${inputId},email.ilike.${inputId}`)
-                        .eq("password", inputPwd)
                         .maybeSingle();
 
-                    if (student && !studentErr) {
-                        this._setStudentSession(student);
-                        return { success: true, role: "student", user: student };
+                    if (!studentErr && student) {
+                        // Student account exists in Cloud Database!
+                        if (student.password === inputPwd) {
+                            const sidKey = (student.student_id || student.id || "").trim().toLowerCase();
+                            localStorage.setItem(`tracked_student_pwd_${sidKey}`, student.password);
+                            localStorage.setItem(`tracked_student_pwd_changed_${sidKey}`, "true");
+                            localStorage.setItem("tracked_student_password", student.password);
+                            try {
+                                let ls = JSON.parse(localStorage.getItem("tracked_database_students") || "[]");
+                                let mod = false;
+                                ls = ls.map(s => {
+                                    const sid = s.id || s.student_id || "";
+                                    if (sid.toLowerCase() === sidKey || (s.email && s.email.toLowerCase() === (student.email || "").toLowerCase())) {
+                                        s.password = student.password;
+                                        s.password_changed = true;
+                                        mod = true;
+                                    }
+                                    return s;
+                                });
+                                if (mod) localStorage.setItem("tracked_database_students", JSON.stringify(ls));
+                            } catch(e) {}
+
+                            this._setStudentSession(student);
+                            return { success: true, role: "student", user: student };
+                        } else {
+                            // Password does NOT match cloud record!
+                            // Strictly reject without falling through to local fallback.
+                            return {
+                                success: false,
+                                message: "Invalid password. Please verify your credentials."
+                            };
+                        }
                     }
                 } catch (err) {
                     console.warn("[TrackED Backend] Cloud query failed, falling back to local verification:", err);
@@ -158,6 +214,7 @@ const SUPABASE_CONFIG = {
             }
 
             // 2. Offline / Local Fallback Mode
+            // (Only reached if Cloud is unreachable or account is local-only)
             let localTeachers = [];
             try {
                 localTeachers = JSON.parse(localStorage.getItem("tracked_database_teachers") || "[]");
@@ -167,36 +224,43 @@ const SUPABASE_CONFIG = {
             const savedTeacherPwd = localStorage.getItem("tracked_teacher_password") || DEFAULT_TEACHER.password;
             const savedTeacherEmail = localStorage.getItem(`tracked_teacher_recovery_email_${defTidKey}`) || DEFAULT_TEACHER.email || "";
 
-            // Check default teacher or any custom teacher cached from cloud
+            // Check cached teacher
             let matchedTeacher = localTeachers.find(t => 
                 (t.teacher_id && t.teacher_id.toLowerCase() === inputId.toLowerCase()) || 
                 (t.email && t.email.toLowerCase() === inputId.toLowerCase())
             );
 
-            if (matchedTeacher && matchedTeacher.password === inputPwd) {
-                this._setTeacherSession(matchedTeacher);
-                return { success: true, role: "teacher", user: matchedTeacher };
+            if (matchedTeacher) {
+                if (matchedTeacher.password === inputPwd) {
+                    this._setTeacherSession(matchedTeacher);
+                    return { success: true, role: "teacher", user: matchedTeacher };
+                } else {
+                    return { success: false, message: "Invalid password. Please verify your credentials." };
+                }
             }
 
-            const isDefaultTeacherMatch = (
+            const isDefaultTeacherAccount = (
                 inputId.toLowerCase() === DEFAULT_TEACHER.id.toLowerCase() || 
                 (savedTeacherEmail && inputId.toLowerCase() === savedTeacherEmail.toLowerCase())
-            ) && inputPwd === savedTeacherPwd;
+            );
 
-            if (isDefaultTeacherMatch) {
-                const teacherObj = {
-                    ...DEFAULT_TEACHER,
-                    email: savedTeacherEmail,
-                    phone: localStorage.getItem(`tracked_teacher_phone_${defTidKey}`) || DEFAULT_TEACHER.phone || "",
-                    password: savedTeacherPwd,
-                    password_changed: localStorage.getItem("tracked_teacher_password_changed") === "true"
-                };
-                this._setTeacherSession(teacherObj);
-                return { success: true, role: "teacher", user: teacherObj };
+            if (isDefaultTeacherAccount) {
+                if (inputPwd === savedTeacherPwd) {
+                    const teacherObj = {
+                        ...DEFAULT_TEACHER,
+                        email: savedTeacherEmail,
+                        phone: localStorage.getItem(`tracked_teacher_phone_${defTidKey}`) || DEFAULT_TEACHER.phone || "",
+                        password: savedTeacherPwd,
+                        password_changed: localStorage.getItem("tracked_teacher_password_changed") === "true"
+                    };
+                    this._setTeacherSession(teacherObj);
+                    return { success: true, role: "teacher", user: teacherObj };
+                } else {
+                    return { success: false, message: "Invalid password. Please verify your credentials." };
+                }
             }
 
             // Check students database in localStorage:
-            // Custom added/edited students in tracked_database_students MUST TAKE PRIORITY!
             let studentsList = [];
             try {
                 const storedCustom = JSON.parse(localStorage.getItem("tracked_database_students") || "[]");
@@ -217,7 +281,6 @@ const SUPABASE_CONFIG = {
             );
 
             if (matchedStudent) {
-                // Check student-specific password (defaults to 1234)
                 const sidKey = matchedStudent.id.trim().toLowerCase();
                 const studentSpecificPwd = localStorage.getItem(`tracked_student_pwd_${sidKey}`) || 
                                            (matchedStudent.id === "2024-00123" ? localStorage.getItem("tracked_student_password") : null) || 
@@ -240,6 +303,8 @@ const SUPABASE_CONFIG = {
                     };
                     this._setStudentSession(studentObj);
                     return { success: true, role: "student", user: studentObj };
+                } else {
+                    return { success: false, message: "Invalid password. Please verify your credentials." };
                 }
             }
 
@@ -444,9 +509,38 @@ const SUPABASE_CONFIG = {
             if (role === "teacher") {
                 localStorage.setItem("tracked_teacher_password", newPassword);
                 localStorage.setItem("tracked_teacher_password_changed", "true");
+
+                // Update local cached teachers
+                try {
+                    let localTeachers = JSON.parse(localStorage.getItem("tracked_database_teachers") || "[]");
+                    let modified = false;
+                    localTeachers = localTeachers.map(t => {
+                        const tid = t.teacher_id || t.id || "";
+                        if (tid.toLowerCase() === id.toLowerCase() || (t.email && t.email.toLowerCase() === id.toLowerCase())) {
+                            t.password = newPassword;
+                            t.password_changed = true;
+                            modified = true;
+                        }
+                        return t;
+                    });
+                    if (modified) {
+                        localStorage.setItem("tracked_database_teachers", JSON.stringify(localTeachers));
+                    }
+                } catch (e) {}
+
                 if (client) {
                     try {
-                        await client.from("teachers").update({ password: newPassword, password_changed: true }).eq("teacher_id", id);
+                        const { error: err1 } = await client
+                            .from("teachers")
+                            .update({ password: newPassword, password_changed: true })
+                            .ilike("teacher_id", id);
+
+                        if (err1 || id.includes("@")) {
+                            await client
+                                .from("teachers")
+                                .update({ password: newPassword, password_changed: true })
+                                .ilike("email", id);
+                        }
                     } catch (e) {
                         console.warn("[TrackED Backend] Could not sync password to cloud:", e);
                     }
@@ -457,9 +551,38 @@ const SUPABASE_CONFIG = {
                 localStorage.setItem(`tracked_student_pwd_changed_${sidKey}`, "true");
                 localStorage.setItem("tracked_student_password", newPassword);
                 localStorage.setItem("tracked_student_password_changed", "true");
+
+                // Update local cached students
+                try {
+                    let localStudents = JSON.parse(localStorage.getItem("tracked_database_students") || "[]");
+                    let modified = false;
+                    localStudents = localStudents.map(s => {
+                        const sid = s.id || s.student_id || "";
+                        if (sid.toLowerCase() === id.toLowerCase() || (s.email && s.email.toLowerCase() === id.toLowerCase())) {
+                            s.password = newPassword;
+                            s.password_changed = true;
+                            modified = true;
+                        }
+                        return s;
+                    });
+                    if (modified) {
+                        localStorage.setItem("tracked_database_students", JSON.stringify(localStudents));
+                    }
+                } catch (e) {}
+
                 if (client) {
                     try {
-                        await client.from("students").update({ password: newPassword, password_changed: true }).eq("student_id", id);
+                        const { error: err1 } = await client
+                            .from("students")
+                            .update({ password: newPassword, password_changed: true })
+                            .ilike("student_id", id);
+
+                        if (err1 || id.includes("@")) {
+                            await client
+                                .from("students")
+                                .update({ password: newPassword, password_changed: true })
+                                .ilike("email", id);
+                        }
                     } catch (e) {
                         console.warn("[TrackED Backend] Could not sync password to cloud:", e);
                     }
@@ -1539,6 +1662,9 @@ const SUPABASE_CONFIG = {
             } else {
                 localStorage.removeItem(`tracked_teacher_avatar_${tidKey}`);
             }
+            if (teacher.password) {
+                localStorage.setItem("tracked_teacher_password", teacher.password);
+            }
             if (teacher.password_changed) {
                 localStorage.setItem("tracked_teacher_password_changed", "true");
             }
@@ -1612,11 +1738,13 @@ const SUPABASE_CONFIG = {
                 localStorage.removeItem(`tracked_student_phone_${sidKey}`);
             }
             
-            const defaultPwd = student.password || "1234";
-            if (!localStorage.getItem(`tracked_student_pwd_${sidKey}`)) {
-                localStorage.setItem(`tracked_student_pwd_${sidKey}`, defaultPwd);
+            if (student.password) {
+                localStorage.setItem(`tracked_student_pwd_${sidKey}`, student.password);
+                localStorage.setItem("tracked_student_password", student.password);
+            } else if (!localStorage.getItem(`tracked_student_pwd_${sidKey}`)) {
+                localStorage.setItem(`tracked_student_pwd_${sidKey}`, "1234");
+                localStorage.setItem("tracked_student_password", "1234");
             }
-            localStorage.setItem("tracked_student_password", localStorage.getItem(`tracked_student_pwd_${sidKey}`) || defaultPwd);
 
             // Sync cloud avatar to local if available, or clean up if none
             localStorage.removeItem("tracked_student_avatar_data");
