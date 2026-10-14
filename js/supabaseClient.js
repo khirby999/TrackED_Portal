@@ -72,6 +72,15 @@ const SUPABASE_CONFIG = {
         password: "teacher123"
     };
 
+    const DEFAULT_ADMIN = {
+        id: "ADMIN-2026",
+        username: "admin",
+        name: "System Administrator",
+        role: "admin",
+        department: "Administration Office",
+        defaultPassword: "admin123"
+    };
+
     window.TrackED_DB = {
         /**
          * Checks if cloud database is configured and reachable
@@ -81,8 +90,8 @@ const SUPABASE_CONFIG = {
         },
 
         /**
-         * Unified Login for Faculty and Students
-         * @param {string} userId (Student ID, Faculty ID, or Email)
+         * Unified Login for Faculty, Students, and Portal Administrators
+         * @param {string} userId (Student ID, Faculty ID, Admin ID, or Email)
          * @param {string} password
          * @returns {Promise<{success: boolean, role?: string, user?: object, message?: string}>}
          */
@@ -92,6 +101,25 @@ const SUPABASE_CONFIG = {
 
             if (!inputId || !inputPwd) {
                 return { success: false, message: "Please enter your ID and password." };
+            }
+
+            // 0. Check Administrator Account
+            const savedAdminPwd = localStorage.getItem("tracked_admin_password") || DEFAULT_ADMIN.defaultPassword;
+            const isAdminMatch = (
+                inputId.toLowerCase() === DEFAULT_ADMIN.username.toLowerCase() ||
+                inputId.toUpperCase() === DEFAULT_ADMIN.id.toUpperCase()
+            ) && inputPwd === savedAdminPwd;
+
+            if (isAdminMatch) {
+                const adminObj = {
+                    id: DEFAULT_ADMIN.id,
+                    username: DEFAULT_ADMIN.username,
+                    name: DEFAULT_ADMIN.name,
+                    role: "admin",
+                    department: DEFAULT_ADMIN.department
+                };
+                this._setAdminSession(adminObj);
+                return { success: true, role: "admin", user: adminObj };
             }
 
             const client = getClient();
@@ -1607,12 +1635,243 @@ const SUPABASE_CONFIG = {
             sessionStorage.removeItem("tracked_student_pwd_dismissed");
         },
 
+        _setAdminSession: function (admin) {
+            // Completely clear any previous student and teacher session so roles never mix
+            const clearKeys = [
+                "tracked_student_id",
+                "tracked_student_name",
+                "tracked_student_program",
+                "tracked_student_courses",
+                "tracked_student_password",
+                "tracked_student_password_changed",
+                "tracked_teacher_id",
+                "tracked_teacher_name",
+                "tracked_teacher_dept",
+                "tracked_teacher_courses",
+                "tracked_teacher_password_changed",
+                "tracked_selected_course",
+                "tracked_selected_course_code",
+                "tracked_recovery_email",
+                "tracked_student_recovery_email",
+                "tracked_teacher_recovery_email",
+                "tracked_phone",
+                "tracked_student_phone",
+                "tracked_teacher_phone",
+                "tracked_avatar_data",
+                "tracked_student_avatar_data",
+                "tracked_teacher_avatar_data"
+            ];
+            clearKeys.forEach(k => localStorage.removeItem(k));
+
+            localStorage.setItem("tracked_user_role", "admin");
+            localStorage.setItem("tracked_admin_id", admin.id || "ADMIN-2026");
+            localStorage.setItem("tracked_admin_name", admin.name || "System Administrator");
+        },
+
+        /**
+         * Fetch all registered faculty teachers (for Admin Directory)
+         */
+        getAllTeachers: async function () {
+            const client = getClient();
+            if (client) {
+                try {
+                    const { data, error } = await client
+                        .from("teachers")
+                        .select("teacher_id, first_name, middle_name, last_name, name, department, role, email, phone, password_changed, created_at")
+                        .order("name", { ascending: true });
+                    if (!error && Array.isArray(data)) {
+                        return { success: true, data };
+                    }
+                } catch (e) {
+                    console.warn("[TrackED Backend] Could not query teachers from Supabase Cloud:", e);
+                }
+            }
+
+            // Fallback to local storage
+            let localTeachers = [];
+            try {
+                localTeachers = JSON.parse(localStorage.getItem("tracked_database_teachers") || "[]");
+            } catch (e) {}
+            if (!localTeachers.some(t => (t.teacher_id || t.id) === DEFAULT_TEACHER.id)) {
+                localTeachers.unshift({
+                    teacher_id: DEFAULT_TEACHER.id,
+                    first_name: DEFAULT_TEACHER.first_name,
+                    middle_name: DEFAULT_TEACHER.middle_name,
+                    last_name: DEFAULT_TEACHER.last_name,
+                    name: DEFAULT_TEACHER.name,
+                    department: DEFAULT_TEACHER.department,
+                    role: DEFAULT_TEACHER.role,
+                    email: localStorage.getItem(`tracked_teacher_recovery_email_${DEFAULT_TEACHER.id.toLowerCase().replace(/[^a-z0-9]/g, "_")}`) || DEFAULT_TEACHER.email || "",
+                    phone: DEFAULT_TEACHER.phone || "",
+                    password_changed: localStorage.getItem("tracked_teacher_password_changed") === "true"
+                });
+            }
+            return { success: true, data: localTeachers };
+        },
+
+        /**
+         * Add a new Faculty Teacher (Administrator action)
+         * Formats name to "LastName, FirstName M."
+         * Assigns default password 'teacher123'
+         */
+        addFacultyTeacher: async function (teacherData) {
+            const client = getClient();
+            const tid = (teacherData.teacher_id || "").trim();
+            const fName = (teacherData.first_name || "").trim();
+            const mName = (teacherData.middle_name || "").trim();
+            const lName = (teacherData.last_name || "").trim();
+            const dept = (teacherData.department || "").trim();
+
+            if (!tid) return { success: false, message: "Faculty ID is required." };
+            if (!fName || !lName) return { success: false, message: "First Name and Last Name are required." };
+            if (!dept) return { success: false, message: "Department is required." };
+
+            // Auto-format full name: "LastName, FirstName M."
+            const mi = mName ? mName.charAt(0).toUpperCase() + "." : "";
+            const formattedName = mi ? `${lName}, ${fName} ${mi}` : `${lName}, ${fName}`;
+
+            const newTeacherRecord = {
+                teacher_id: tid,
+                first_name: fName,
+                middle_name: mName,
+                last_name: lName,
+                name: formattedName,
+                department: dept,
+                role: "Faculty Instructor",
+                password: "teacher123",
+                password_changed: false,
+                email: null,
+                phone: null,
+                avatar_data: null
+            };
+
+            // 1. Check if ID exists in cloud
+            if (client) {
+                try {
+                    const { data: existing, error: checkErr } = await client
+                        .from("teachers")
+                        .select("teacher_id")
+                        .ilike("teacher_id", tid)
+                        .maybeSingle();
+
+                    if (existing && !checkErr) {
+                        return { success: false, message: `Faculty ID "${tid}" is already registered in the database.` };
+                    }
+
+                    const { data, error } = await client
+                        .from("teachers")
+                        .insert([newTeacherRecord])
+                        .select();
+
+                    if (error) {
+                        console.error("[TrackED Backend] Supabase insert teacher error:", error);
+                        return { success: false, message: error.message || "Failed to add faculty teacher to database." };
+                    }
+                } catch (err) {
+                    console.warn("[TrackED Backend] Cloud teacher insert failed, falling back to local:", err);
+                }
+            }
+
+            // Also update local cache
+            try {
+                let localTeachers = JSON.parse(localStorage.getItem("tracked_database_teachers") || "[]");
+                if (localTeachers.some(t => (t.teacher_id || t.id).toLowerCase() === tid.toLowerCase())) {
+                    return { success: false, message: `Faculty ID "${tid}" is already registered.` };
+                }
+                localTeachers.push(newTeacherRecord);
+                localStorage.setItem("tracked_database_teachers", JSON.stringify(localTeachers));
+            } catch (e) {}
+
+            return { success: true, teacher: newTeacherRecord };
+        },
+
+        /**
+         * Delete a Faculty Teacher (Administrator action)
+         */
+        deleteFacultyTeacher: async function (teacherId) {
+            const client = getClient();
+            const tid = (teacherId || "").trim();
+            if (!tid) return { success: false, message: "Faculty ID is required." };
+
+            if (client) {
+                try {
+                    const { error } = await client
+                        .from("teachers")
+                        .delete()
+                        .eq("teacher_id", tid);
+
+                    if (error) {
+                        console.error("[TrackED Backend] Supabase delete teacher error:", error);
+                        return { success: false, message: error.message || "Failed to delete teacher from database." };
+                    }
+                } catch (err) {
+                    console.warn("[TrackED Backend] Cloud teacher delete failed, falling back to local:", err);
+                }
+            }
+
+            // Clean up local caches
+            try {
+                let localTeachers = JSON.parse(localStorage.getItem("tracked_database_teachers") || "[]");
+                localTeachers = localTeachers.filter(t => (t.teacher_id || t.id).toLowerCase() !== tid.toLowerCase());
+                localStorage.setItem("tracked_database_teachers", JSON.stringify(localTeachers));
+            } catch (e) {}
+
+            const tidKey = tid.toLowerCase().replace(/[^a-z0-9]/g, "_");
+            localStorage.removeItem(`tracked_teacher_courses_${tidKey}`);
+            localStorage.removeItem(`tracked_teacher_recovery_email_${tidKey}`);
+            localStorage.removeItem(`tracked_teacher_phone_${tidKey}`);
+            localStorage.removeItem(`tracked_teacher_avatar_${tidKey}`);
+
+            return { success: true, message: `Faculty ${tid} deleted successfully.` };
+        },
+
+        /**
+         * Retrieve system stats for Admin Dashboard
+         */
+        getAdminStats: async function () {
+            const client = getClient();
+            let teacherCount = 1;
+            let studentCount = 0;
+            let courseCount = 0;
+
+            if (client) {
+                try {
+                    const [tRes, sRes, cRes] = await Promise.all([
+                        client.from("teachers").select("teacher_id", { count: "exact", head: true }),
+                        client.from("students").select("student_id", { count: "exact", head: true }),
+                        client.from("courses").select("course_id", { count: "exact", head: true })
+                    ]);
+                    if (tRes.count !== null && tRes.count !== undefined) teacherCount = tRes.count;
+                    if (sRes.count !== null && sRes.count !== undefined) studentCount = sRes.count;
+                    if (cRes.count !== null && cRes.count !== undefined) courseCount = cRes.count;
+                } catch (e) {
+                    console.warn("[TrackED Backend] Stats fetch error:", e);
+                }
+            } else {
+                try {
+                    const lt = JSON.parse(localStorage.getItem("tracked_database_teachers") || "[]");
+                    teacherCount = Math.max(1, lt.length);
+                    const ls = JSON.parse(localStorage.getItem("tracked_database_students") || "[]");
+                    studentCount = ls.length;
+                } catch (e) {}
+            }
+
+            return {
+                teacherCount,
+                studentCount,
+                courseCount,
+                isCloudConnected: this.isCloudConnected()
+            };
+        },
+
         /**
          * Central portal logout handler that resets active session identities
          */
         logout: function () {
             const sessionKeys = [
                 "tracked_user_role",
+                "tracked_admin_id",
+                "tracked_admin_name",
                 "tracked_student_id",
                 "tracked_student_name",
                 "tracked_student_program",

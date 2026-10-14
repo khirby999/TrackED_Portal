@@ -1,34 +1,40 @@
 document.addEventListener("DOMContentLoaded", () => {
-    // DOM Elements - Tabs & Verification
-    const recoveryTabs     = document.getElementById("recoveryTabs");
-    const tabId            = document.getElementById("tabId");
-    const tabEmail         = document.getElementById("tabEmail");
-    const verifyForm       = document.getElementById("verifyForm");
-    const identifierInput  = document.getElementById("identifierInput");
-    const identifierIcon   = document.getElementById("identifierIcon");
-    const verifyBtn        = document.getElementById("verifyBtn");
-    const verifyBtnText    = document.getElementById("verifyBtnText");
+    // DOM Elements - Forms & Inputs
+    const verifyForm         = document.getElementById("verifyForm");
+    const identifierInput    = document.getElementById("identifierInput");
+    const verifyBtn          = document.getElementById("verifyBtn");
+    const verifyBtnText      = document.getElementById("verifyBtnText");
 
-    // DOM Elements - Password Reset Form
-    const resetPasswordForm = document.getElementById("resetPasswordForm");
-    const accountRoleBadge  = document.getElementById("accountRoleBadge");
-    const accountName       = document.getElementById("accountName");
-    const accountSub        = document.getElementById("accountSub");
-    const changeAccountBtn  = document.getElementById("changeAccountBtn");
-    const newPasswordInput  = document.getElementById("newPassword");
-    const confirmPwdInput   = document.getElementById("confirmPassword");
-    const toggleNewPwd      = document.getElementById("toggleNewPwd");
-    const toggleConfirmPwd  = document.getElementById("toggleConfirmPwd");
-    const savePasswordBtn   = document.getElementById("savePasswordBtn");
-    const saveBtnText       = document.getElementById("saveBtnText");
-    const formSubtitle      = document.getElementById("formSubtitle");
-    const statusMessage     = document.getElementById("statusMessage");
-    const containerIcon     = document.getElementById("containerIcon");
+    const otpForm            = document.getElementById("otpForm");
+    const otpCodeInput       = document.getElementById("otpCodeInput");
+    const verifyOtpBtn       = document.getElementById("verifyOtpBtn");
+    const verifyOtpBtnText   = document.getElementById("verifyOtpBtnText");
+    const resendCodeBtn      = document.getElementById("resendCodeBtn");
+    const changeEmailBtn     = document.getElementById("changeEmailBtn");
+    const accountCardPreview = document.getElementById("accountCardPreview");
+    const accountRoleBadge   = document.getElementById("accountRoleBadge");
+    const accountName        = document.getElementById("accountName");
+    const accountSub         = document.getElementById("accountSub");
+    const otpInstruction     = document.getElementById("otpInstruction");
+
+    const resetPasswordForm  = document.getElementById("resetPasswordForm");
+    const newPasswordInput   = document.getElementById("newPassword");
+    const confirmPwdInput    = document.getElementById("confirmPassword");
+    const toggleNewPwd       = document.getElementById("toggleNewPwd");
+    const toggleConfirmPwd   = document.getElementById("toggleConfirmPwd");
+    const savePasswordBtn    = document.getElementById("savePasswordBtn");
+    const saveBtnText        = document.getElementById("saveBtnText");
+
+    const formTitle          = document.getElementById("formTitle");
+    const formSubtitle       = document.getElementById("formSubtitle");
+    const statusMessage      = document.getElementById("statusMessage");
 
     // State Variables
-    let currentMode = "id"; // "id" or "email"
     let verifiedUser = null;
     let verifiedRole = null;
+    let activeOtp = null;
+    let otpExpiresAt = 0;
+    let currentTargetEmail = "";
 
     // Helper: Show Alert Message
     function showMessage(text, type = "error") {
@@ -47,115 +53,186 @@ document.addEventListener("DOMContentLoaded", () => {
         statusMessage.innerHTML = "";
     }
 
-    // Helper: Escape HTML
-    function escapeHtml(text) {
-        if (!text) return "";
-        const div = document.createElement("div");
-        div.textContent = text;
-        return div.innerHTML;
-    }
-
-    // 1. TAB SWITCHING: ID vs EMAIL
-    function setRecoveryMode(mode) {
-        currentMode = mode;
-        hideMessage();
-
-        if (mode === "id") {
-            if (tabId) tabId.classList.add("active");
-            if (tabEmail) tabEmail.classList.remove("active");
-            if (identifierIcon) identifierIcon.className = "fa-solid fa-id-card icon";
-            if (identifierInput) {
-                identifierInput.type = "text";
-                identifierInput.placeholder = "Enter Student or Faculty ID (e.g. 2024-00123)";
-                identifierInput.value = "";
-                identifierInput.focus();
-            }
-        } else {
-            if (tabEmail) tabEmail.classList.add("active");
-            if (tabId) tabId.classList.remove("active");
-            if (identifierIcon) identifierIcon.className = "fa-solid fa-envelope icon";
-            if (identifierInput) {
-                identifierInput.type = "email";
-                identifierInput.placeholder = "Enter your registered email address";
-                identifierInput.value = "";
-                identifierInput.focus();
-            }
+    // Helper: Mask email (e.g. j***n@gmail.com)
+    function maskEmail(email) {
+        if (!email || !email.includes("@")) return "your email";
+        const parts = email.split("@");
+        const name = parts[0];
+        const domain = parts[1];
+        if (name.length <= 2) {
+            return `${name.charAt(0)}*@${domain}`;
         }
+        return `${name.charAt(0)}${"*".repeat(Math.min(5, name.length - 2))}${name.slice(-1)}@${domain}`;
     }
 
-    if (tabId) tabId.addEventListener("click", () => setRecoveryMode("id"));
-    if (tabEmail) tabEmail.addEventListener("click", () => setRecoveryMode("email"));
+    // Helper: Generate Secure 6-digit OTP
+    function generateOTP() {
+        return Math.floor(100000 + Math.random() * 900000).toString();
+    }
 
-    // 2. STEP 1: VERIFY ACCOUNT
+    // ===================================================
+    // STEP 1: REQUEST VERIFICATION CODE VIA EMAIL
+    // ===================================================
     if (verifyForm) {
         verifyForm.addEventListener("submit", async (e) => {
             e.preventDefault();
             hideMessage();
 
-            const queryVal = identifierInput ? identifierInput.value.trim() : "";
-            if (!queryVal) {
-                showMessage(currentMode === "id" ? "Please enter your Student or Faculty ID." : "Please enter your registered email address.");
+            const emailVal = identifierInput ? identifierInput.value.trim().toLowerCase() : "";
+            if (!emailVal || !emailVal.includes("@")) {
+                showMessage("Please enter a valid email address.", "error");
                 return;
             }
 
             // Set button loading state
             if (verifyBtn) verifyBtn.disabled = true;
-            if (verifyBtnText) verifyBtnText.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Verifying...';
+            if (verifyBtnText) verifyBtnText.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Checking Database...';
 
             try {
                 if (!window.TrackED_DB || typeof window.TrackED_DB.findUserForRecovery !== "function") {
                     throw new Error("Database service is not ready. Please refresh the page.");
                 }
 
-                const res = await window.TrackED_DB.findUserForRecovery(currentMode, queryVal);
+                const res = await window.TrackED_DB.findUserForRecovery("email", emailVal);
 
                 if (res.success && res.user) {
                     verifiedUser = res.user;
                     verifiedRole = res.role;
+                    currentTargetEmail = emailVal;
 
-                    // Populate Verified Account Card
+                    // Generate OTP and set 10-minute validity
+                    activeOtp = generateOTP();
+                    otpExpiresAt = Date.now() + 10 * 60 * 1000;
+
+                    if (verifyBtnText) verifyBtnText.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Sending Email...';
+
+                    // Dispatch via EmailJS
+                    if (window.TrackED_EmailService && typeof window.TrackED_EmailService.sendPasswordResetOTP === "function") {
+                        await window.TrackED_EmailService.sendPasswordResetOTP({
+                            userName: verifiedUser.name || "User",
+                            targetEmail: emailVal,
+                            otpCode: activeOtp
+                        });
+                    }
+
+                    // Transition to Step 2: Show OTP Form
+                    verifyForm.style.display = "none";
+                    if (otpForm) otpForm.style.display = "block";
+
+                    if (formTitle) formTitle.textContent = "Enter Verification Code";
+                    if (formSubtitle) formSubtitle.textContent = `A 6-digit code was sent to ${maskEmail(emailVal)}.`;
+                    if (otpInstruction) otpInstruction.textContent = `Check your inbox (${maskEmail(emailVal)}) and enter the 6-digit code below.`;
+
+                    // Populate Verified Account Preview
                     if (accountName) accountName.textContent = verifiedUser.name || "User";
-                    if (accountSub) accountSub.textContent = verifiedUser.program || (verifiedRole === "teacher" ? "Faculty Instructor" : "Student");
+                    if (accountSub) accountSub.textContent = verifiedUser.program || (verifiedRole === "teacher" ? "Faculty Member" : "Student");
                     if (accountRoleBadge) {
                         accountRoleBadge.textContent = verifiedRole === "teacher" ? "Faculty" : "Student";
                         accountRoleBadge.className = `account-badge ${verifiedRole === "teacher" ? "teacher" : ""}`;
                     }
 
-                    // Transition to Step 2: Show Reset Password Form
-                    verifyForm.style.display = "none";
-                    if (recoveryTabs) recoveryTabs.style.display = "none";
-                    if (resetPasswordForm) resetPasswordForm.style.display = "block";
+                    showMessage(`Verification code dispatched to ${maskEmail(emailVal)}. Valid for 10 minutes.`, "success");
 
-                    if (formSubtitle) formSubtitle.textContent = "Identity verified! Set your new password below.";
-                    if (newPasswordInput) {
-                        newPasswordInput.value = "";
-                        setTimeout(() => newPasswordInput.focus(), 150);
+                    if (otpCodeInput) {
+                        otpCodeInput.value = "";
+                        setTimeout(() => otpCodeInput.focus(), 150);
                     }
-                    if (confirmPwdInput) confirmPwdInput.value = "";
                 } else {
-                    showMessage(res.message || "No account found matching the provided information.");
+                    showMessage(res.message || `No registered account found with email "${emailVal}". Please verify your email.`, "error");
                 }
             } catch (err) {
                 console.error("Account verification error:", err);
-                showMessage("An unexpected error occurred while verifying the account. Please try again.");
+                showMessage("An error occurred while verifying the email. Please try again.", "error");
             } finally {
                 if (verifyBtn) verifyBtn.disabled = false;
-                if (verifyBtnText) verifyBtnText.textContent = "Verify Account";
+                if (verifyBtnText) verifyBtnText.textContent = "Send Verification Code";
             }
         });
     }
 
-    // 3. CHANGE ACCOUNT BUTTON (Go back to Step 1)
-    if (changeAccountBtn) {
-        changeAccountBtn.addEventListener("click", () => {
-            verifiedUser = null;
-            verifiedRole = null;
+    // ===================================================
+    // STEP 2: VERIFY 6-DIGIT OTP
+    // ===================================================
+    if (otpForm) {
+        otpForm.addEventListener("submit", (e) => {
+            e.preventDefault();
             hideMessage();
 
+            const enteredCode = otpCodeInput ? otpCodeInput.value.trim() : "";
+
+            if (!enteredCode || enteredCode.length !== 6) {
+                showMessage("Please enter the complete 6-digit verification code.", "error");
+                return;
+            }
+
+            if (Date.now() > otpExpiresAt) {
+                showMessage("Your verification code has expired. Please click 'Resend Verification Code'.", "error");
+                return;
+            }
+
+            if (enteredCode !== activeOtp) {
+                showMessage("Invalid verification code. Please check your inbox or click Resend.", "error");
+                return;
+            }
+
+            // OTP is valid! Transition to Step 3: Set New Password
+            otpForm.style.display = "none";
+            if (resetPasswordForm) resetPasswordForm.style.display = "block";
+
+            if (formTitle) formTitle.textContent = "Create New Password";
+            if (formSubtitle) formSubtitle.textContent = `Identity verified for ${verifiedUser ? verifiedUser.name : "your account"}. Set your new password below.`;
+
+            showMessage("Code verified successfully! Create your new password.", "success");
+
+            if (newPasswordInput) {
+                newPasswordInput.value = "";
+                setTimeout(() => newPasswordInput.focus(), 150);
+            }
+            if (confirmPwdInput) confirmPwdInput.value = "";
+        });
+    }
+
+    // Resend Code Button
+    if (resendCodeBtn) {
+        resendCodeBtn.addEventListener("click", async () => {
+            if (!currentTargetEmail || !verifiedUser) {
+                showMessage("Please start over and re-enter your email.", "error");
+                return;
+            }
+
+            activeOtp = generateOTP();
+            otpExpiresAt = Date.now() + 10 * 60 * 1000;
+            resendCodeBtn.disabled = true;
+            resendCodeBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Resending...';
+
+            if (window.TrackED_EmailService && typeof window.TrackED_EmailService.sendPasswordResetOTP === "function") {
+                await window.TrackED_EmailService.sendPasswordResetOTP({
+                    userName: verifiedUser.name || "User",
+                    targetEmail: currentTargetEmail,
+                    otpCode: activeOtp
+                });
+            }
+
+            showMessage(`A new 6-digit code has been sent to ${maskEmail(currentTargetEmail)}!`, "success");
+            resendCodeBtn.disabled = false;
+            resendCodeBtn.innerHTML = '<i class="fa-solid fa-arrows-rotate"></i> Resend Verification Code';
+        });
+    }
+
+    // Change Email Button (Back to Step 1)
+    if (changeEmailBtn) {
+        changeEmailBtn.addEventListener("click", () => {
+            hideMessage();
+            verifiedUser = null;
+            verifiedRole = null;
+            activeOtp = null;
+
+            if (otpForm) otpForm.style.display = "none";
             if (resetPasswordForm) resetPasswordForm.style.display = "none";
-            if (recoveryTabs) recoveryTabs.style.display = "flex";
             if (verifyForm) verifyForm.style.display = "block";
-            if (formSubtitle) formSubtitle.textContent = "Select how you would like to verify your account.";
+
+            if (formTitle) formTitle.textContent = "Reset Password";
+            if (formSubtitle) formSubtitle.textContent = "Enter your registered email address to receive a secure verification code.";
 
             if (identifierInput) {
                 identifierInput.value = "";
@@ -164,7 +241,76 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    // 4. SHOW/HIDE PASSWORD TOGGLES
+    // ===================================================
+    // STEP 3: SUBMIT NEW PASSWORD
+    // ===================================================
+    if (resetPasswordForm) {
+        resetPasswordForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            hideMessage();
+
+            if (!verifiedUser || !verifiedRole) {
+                showMessage("Session expired. Please restart the recovery process.", "error");
+                return;
+            }
+
+            const newPwd = newPasswordInput ? newPasswordInput.value.trim() : "";
+            const confirmPwd = confirmPwdInput ? confirmPwdInput.value.trim() : "";
+
+            if (!newPwd || !confirmPwd) {
+                showMessage("Please fill out both password fields.", "error");
+                return;
+            }
+
+            if (newPwd.length < 4) {
+                showMessage("Password must be at least 4 characters long.", "error");
+                return;
+            }
+
+            if (newPwd !== confirmPwd) {
+                showMessage("Passwords do not match. Please verify your typing.", "error");
+                return;
+            }
+
+            // Set button loading state
+            if (savePasswordBtn) savePasswordBtn.disabled = true;
+            if (saveBtnText) saveBtnText.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Updating Password...';
+
+            try {
+                if (!window.TrackED_DB || typeof window.TrackED_DB.updatePassword !== "function") {
+                    throw new Error("Database adapter is unavailable. Please refresh.");
+                }
+
+                const res = await window.TrackED_DB.updatePassword(verifiedRole, verifiedUser.id, newPwd);
+
+                if (res.success) {
+                    showMessage("Password updated successfully! Redirecting to login page...", "success");
+
+                    if (savePasswordBtn) {
+                        savePasswordBtn.style.background = "#10b981";
+                        savePasswordBtn.disabled = true;
+                    }
+                    if (saveBtnText) saveBtnText.innerHTML = '<i class="fa-solid fa-check"></i> Password Changed!';
+
+                    // Smooth redirect to login
+                    setTimeout(() => {
+                        window.location.href = "index.html";
+                    }, 2500);
+                } else {
+                    showMessage(res.message || "Failed to update password. Please try again.", "error");
+                    if (savePasswordBtn) savePasswordBtn.disabled = false;
+                    if (saveBtnText) saveBtnText.textContent = "Save New Password";
+                }
+            } catch (err) {
+                console.error("Password update error:", err);
+                showMessage("An unexpected error occurred while saving the password.", "error");
+                if (savePasswordBtn) savePasswordBtn.disabled = false;
+                if (saveBtnText) saveBtnText.textContent = "Save New Password";
+            }
+        });
+    }
+
+    // Helper: Show/Hide Password Toggle
     function setupPasswordToggle(toggleEl, inputEl) {
         if (!toggleEl || !inputEl) return;
         toggleEl.addEventListener("click", () => {
@@ -182,83 +328,4 @@ document.addEventListener("DOMContentLoaded", () => {
 
     setupPasswordToggle(toggleNewPwd, newPasswordInput);
     setupPasswordToggle(toggleConfirmPwd, confirmPwdInput);
-
-    // 5. STEP 2: SAVE NEW PASSWORD
-    if (resetPasswordForm) {
-        resetPasswordForm.addEventListener("submit", async (e) => {
-            e.preventDefault();
-            hideMessage();
-
-            if (!verifiedUser || !verifiedRole) {
-                showMessage("Please verify your account first.");
-                return;
-            }
-
-            const newPwd = newPasswordInput ? newPasswordInput.value : "";
-            const confirmPwd = confirmPwdInput ? confirmPwdInput.value : "";
-
-            if (!newPwd) {
-                showMessage("Please enter a new password.");
-                if (newPasswordInput) newPasswordInput.focus();
-                return;
-            }
-
-            if (newPwd.length < 4) {
-                showMessage("Password must be at least 4 characters long.");
-                if (newPasswordInput) newPasswordInput.focus();
-                return;
-            }
-
-            if (newPwd !== confirmPwd) {
-                showMessage("Passwords do not match. Please ensure both passwords are identical.");
-                if (confirmPwdInput) confirmPwdInput.focus();
-                return;
-            }
-
-            // Set button saving state
-            if (savePasswordBtn) savePasswordBtn.disabled = true;
-            if (saveBtnText) saveBtnText.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving Password...';
-
-            try {
-                const targetId = verifiedUser.id;
-                const res = await window.TrackED_DB.updatePassword(verifiedRole, targetId, newPwd);
-
-                if (res && res.success) {
-                    // Update visual state to success
-                    if (containerIcon) {
-                        containerIcon.classList.add("success");
-                        containerIcon.innerHTML = '<i class="fa-solid fa-check"></i>';
-                    }
-
-                    // Hide reset inputs and show clear success message
-                    if (newPasswordInput) newPasswordInput.disabled = true;
-                    if (confirmPwdInput) confirmPwdInput.disabled = true;
-                    if (savePasswordBtn) savePasswordBtn.style.display = "none";
-                    if (changeAccountBtn) changeAccountBtn.style.display = "none";
-
-                    showMessage(`
-                        <strong>Password Successfully Reset!</strong>
-                        <br>Your new password has been saved for <strong>${escapeHtml(verifiedUser.name)}</strong>.
-                        <br><span style="font-size: 12px; color: #166534; margin-top: 4px; display: inline-block;">
-                            <i class="fa-solid fa-arrow-right"></i> Redirecting you to the login page in 2 seconds...
-                        </span>
-                    `, "success");
-
-                    // Redirect to login after 2 seconds
-                    setTimeout(() => {
-                        window.location.href = "index.html";
-                    }, 2200);
-                } else {
-                    showMessage("Could not update password. Please check your connection and try again.");
-                    if (savePasswordBtn) savePasswordBtn.disabled = false;
-                    if (saveBtnText) saveBtnText.textContent = "Save New Password";
-                }
-            } catch (err) {
-                console.error("Password update error:", err);
-                showMessage("An error occurred while saving your new password. Please try again.");
-                if (savePasswordBtn) savePasswordBtn.disabled = false;
-                if (saveBtnText) saveBtnText.textContent = "Save New Password";
-            }
-        });
-    }
 });

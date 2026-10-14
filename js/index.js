@@ -116,7 +116,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
                     // Smooth transition to destination dashboard
                     setTimeout(() => {
-                        if (res.role === "teacher") {
+                        if (res.role === "admin") {
+                            window.location.href = "Admin_Pages/adminDashboard.html";
+                        } else if (res.role === "teacher") {
                             window.location.href = "Teacher_Pages/teacherDashboard.html";
                         } else {
                             window.location.href = "dashboard.html";

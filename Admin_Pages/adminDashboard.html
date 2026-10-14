@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TrackED - Administrator Portal</title>
+    <link rel="icon" type="image/png" href="../images/TrackEd Logo 2.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/adminDashboard.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+</head>
+<body>
+
+    <!-- TOP HEADER -->
+    <header>
+        <div class="header-left-group">
+            <div class="brand-group">
+                <img src="../images/CSU_Logo.png" alt="CSU Logo" class="brand-logo csu-logo">
+                <img src="../images/TrackEd Logo 2.png" alt="TrackED Logo" class="brand-logo">
+                <div class="brand-text">
+                    <span class="brand-title">TrackED</span>
+                    <span class="admin-pill"><i class="fa-solid fa-shield-halved"></i> Admin Portal</span>
+                </div>
+            </div>
+
+            <!-- Quick Add Faculty Button -->
+            <button class="header-action-btn" id="headerAddFacultyBtn" title="Add New Faculty Member">
+                <i class="fa-solid fa-user-plus"></i>
+                <span>Add Faculty</span>
+            </button>
+        </div>
+
+        <div class="right-menu">
+            <div class="account">
+                <button class="account-btn" id="accountBtn">
+                    <i class="fa-solid fa-user-shield"></i>
+                    <span>Administrator</span>
+                    <i class="fa-solid fa-caret-down"></i>
+                </button>
+
+                <ul class="dropdown-menu" id="dropdownMenu">
+                    <li><a href="../index.html" id="adminLogoutLink"><i class="fa-solid fa-right-from-bracket"></i>Log Out</a></li>
+                </ul>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN DASHBOARD CONTENT -->
+    <main class="admin-container">
+        <!-- HERO / TITLE -->
+        <section class="admin-hero">
+            <div class="hero-text">
+                <div class="badge-role">
+                    <i class="fa-solid fa-sliders"></i> Institutional Management
+                </div>
+                <h1>Faculty & Staff Administration</h1>
+                <p>Register new faculty instructors, configure departments, and manage institutional accounts with real-time Supabase Cloud synchronization.</p>
+            </div>
+        </section>
+
+        <!-- STATS OVERVIEW CARDS -->
+        <section class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon icon-teachers">
+                    <i class="fa-solid fa-chalkboard-user"></i>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-label">Total Faculty</span>
+                    <h3 id="statTotalTeachers" class="stat-value">...</h3>
+                    <span class="stat-sub">Active instructors</span>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon icon-students">
+                    <i class="fa-solid fa-user-graduate"></i>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-label">Total Students</span>
+                    <h3 id="statTotalStudents" class="stat-value">...</h3>
+                    <span class="stat-sub">Enrolled learners</span>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon icon-cloud">
+                    <i class="fa-solid fa-cloud"></i>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-label">Database Status</span>
+                    <h3 id="statCloudStatus" class="stat-value cloud-badge">
+                        <span class="pulse-dot"></span> Connected
+                    </h3>
+                    <span class="stat-sub">Supabase Cloud Database</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- FACULTY MANAGEMENT DIRECTORY -->
+        <section class="directory-card">
+            <div class="directory-header">
+                <div class="directory-title-group">
+                    <div class="title-with-badge">
+                        <h2>Faculty Members Directory</h2>
+                        <span class="count-badge" id="facultyCountBadge">0 Instructors</span>
+                    </div>
+                    <p>All institutional educators with access to create courses, grade students, and record attendance.</p>
+                </div>
+
+                <div class="directory-actions">
+                    <div class="search-box">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <input type="text" id="facultySearchInput" placeholder="Search by name, ID, or department...">
+                    </div>
+                    <button class="btn-primary" id="openAddFacultyBtn">
+                        <i class="fa-solid fa-user-plus"></i>
+                        <span>Add Faculty</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- FACULTY TABLE CONTAINER -->
+            <div class="table-container">
+                <table class="faculty-table">
+                    <thead>
+                        <tr>
+                            <th>Faculty ID</th>
+                            <th>Instructor Name</th>
+                            <th>Department</th>
+                            <th>Default Password</th>
+                            <th class="text-center">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="facultyTableBody">
+                        <tr>
+                            <td colspan="5" class="table-loading">
+                                <i class="fa-solid fa-spinner fa-spin"></i> Loading faculty records from Supabase...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- EMPTY SEARCH / EMPTY DATA STATE -->
+            <div class="empty-state" id="emptyFacultyState" style="display: none;">
+                <div class="empty-icon">
+                    <i class="fa-solid fa-chalkboard-user"></i>
+                </div>
+                <h3 id="emptyStateTitle">No Faculty Found</h3>
+                <p id="emptyStateMsg">There are no faculty members matching your search criteria.</p>
+            </div>
+        </section>
+    </main>
+
+    <!-- =========================================
+         ADD FACULTY MODAL WINDOW
+    ========================================= -->
+    <div class="modal-overlay" id="addFacultyModalOverlay">
+        <div class="admin-modal" id="addFacultyModal">
+            <button class="modal-close-btn" id="closeAddFacultyModal" title="Close">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+
+            <div class="modal-header">
+                <div class="modal-icon-badge add-badge">
+                    <i class="fa-solid fa-user-plus"></i>
+                </div>
+                <h3>Add New Faculty Member</h3>
+                <p>Create an institutional account for an instructor. Default password will be automatically assigned.</p>
+            </div>
+
+            <form id="addFacultyForm" class="modal-form">
+                <!-- Faculty ID Input -->
+                <div class="form-group">
+                    <label for="facultyIdInput">
+                        <i class="fa-solid fa-id-badge"></i> Faculty ID <span class="required-star">*</span>
+                    </label>
+                    <input 
+                        type="text" 
+                        id="facultyIdInput" 
+                        placeholder="e.g. T-2026-0045" 
+                        required 
+                        autocomplete="off"
+                    >
+                    <small class="field-hint">Unique institutional ID used by the teacher to log in.</small>
+                </div>
+
+                <!-- Name Group (First, Middle, Last) -->
+                <div class="form-row-3">
+                    <div class="form-group">
+                        <label for="firstNameInput">
+                            <i class="fa-solid fa-user"></i> First Name <span class="required-star">*</span>
+                        </label>
+                        <input 
+                            type="text" 
+                            id="firstNameInput" 
+                            placeholder="e.g. Billie" 
+                            required 
+                            autocomplete="off"
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label for="middleNameInput">
+                            Middle Name <span class="optional-tag">(Optional)</span>
+                        </label>
+                        <input 
+                            type="text" 
+                            id="middleNameInput" 
+                            placeholder="e.g. O'Connell" 
+                            autocomplete="off"
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label for="lastNameInput">
+                            Last Name <span class="required-star">*</span>
+                        </label>
+                        <input 
+                            type="text" 
+                            id="lastNameInput" 
+                            placeholder="e.g. Eilish" 
+                            required 
+                            autocomplete="off"
+                        >
+                    </div>
+                </div>
+
+                <!-- Department (Typed Text Box per User Request) -->
+                <div class="form-group">
+                    <label for="departmentInput">
+                        <i class="fa-solid fa-building-columns"></i> Department <span class="required-star">*</span>
+                    </label>
+                    <input 
+                        type="text" 
+                        id="departmentInput" 
+                        placeholder="e.g. College of Computer Studies" 
+                        required 
+                        autocomplete="off"
+                    >
+                    <small class="field-hint">Type the department, college, or faculty unit.</small>
+                </div>
+
+                <!-- Auto-Generated Preview Card -->
+                <div class="faculty-preview-card">
+                    <div class="preview-header">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i>
+                        <span>Automatic System Configurations</span>
+                    </div>
+                    <div class="preview-body">
+                        <div class="preview-item">
+                            <span class="preview-label">Formatted Name:</span>
+                            <span class="preview-value" id="previewFormattedName">LastName, FirstName</span>
+                        </div>
+                        <div class="preview-item">
+                            <span class="preview-label">Default Password:</span>
+                            <span class="preview-badge pwd-badge"><i class="fa-solid fa-key"></i> teacher123</span>
+                        </div>
+                        <div class="preview-item">
+                            <span class="preview-label">Recovery Contact:</span>
+                            <span class="preview-sub">Teacher sets personal email & phone upon login</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Alert Messages -->
+                <div class="modal-alert danger" id="facultyErrorAlert" style="display: none;">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <span id="facultyErrorMsg">Please complete all required fields.</span>
+                </div>
+
+                <div class="modal-alert success" id="facultySuccessAlert" style="display: none;">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <span id="facultySuccessMsg">Faculty member added successfully!</span>
+                </div>
+
+                <!-- Modal Actions -->
+                <div class="modal-actions">
+                    <button type="button" class="btn-cancel" id="cancelAddFacultyBtn">Cancel</button>
+                    <button type="submit" class="btn-save" id="saveFacultyBtn">
+                        <i class="fa-solid fa-user-plus"></i> Add Faculty
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- =========================================
+         DELETE FACULTY CONFIRMATION MODAL
+    ========================================= -->
+    <div class="modal-overlay" id="deleteFacultyModalOverlay">
+        <div class="admin-modal modal-danger" id="deleteFacultyModal">
+            <button class="modal-close-btn" id="closeDeleteFacultyModal" title="Close">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+
+            <div class="modal-header">
+                <div class="modal-icon-badge delete-badge">
+                    <i class="fa-solid fa-trash-can"></i>
+                </div>
+                <h3>Remove Faculty Member</h3>
+                <p>Are you sure you want to delete this instructor from the portal?</p>
+            </div>
+
+            <div class="delete-confirmation-box">
+                <div class="delete-target-avatar">
+                    <i class="fa-solid fa-user-slash"></i>
+                </div>
+                <div class="delete-target-info">
+                    <h4 id="deleteTargetName">Instructor Name</h4>
+                    <span class="delete-target-id" id="deleteTargetId">T-2024-0000</span>
+                    <p class="delete-target-dept" id="deleteTargetDept">Department</p>
+                </div>
+            </div>
+
+            <p class="delete-warning-text">
+                <i class="fa-solid fa-triangle-exclamation"></i> This instructor will no longer be able to log in or manage courses.
+            </p>
+
+            <div class="modal-actions">
+                <button type="button" class="btn-cancel" id="cancelDeleteFacultyBtn">Cancel</button>
+                <button type="button" class="btn-danger" id="confirmDeleteFacultyBtn">
+                    <i class="fa-solid fa-trash-can"></i> Delete Instructor
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST NOTIFICATION CONTAINER -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- FOOTER -->
+    <footer>
+        <div class="left-side">
+            <p>TrackED.
+                <br>Track your academic progress with ease.
+            </p>
+            <p>&copy; 2026 TrackED. All Rights Reserved.</p>
+        </div>
+    </footer>
+
+    <!-- Supabase CDN + Backend Client + Admin Controller -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../js/supabaseClient.js"></script>
+    <script src="../js/adminDashboard.js"></script>
+</body>
+</html>

@@ -51,6 +51,45 @@
             console.log(`[Security Alert Details] Student: ${studentName} (${studentId}) | Attempts: ${attemptCount} | Time: ${timestamp || new Date().toLocaleTimeString()}`);
 
             return { success: true, method: "logged" };
+        },
+
+        /**
+         * Dispatches a secure 6-digit verification OTP code for password resets.
+         * @param {Object} details
+         * @param {string} details.userName
+         * @param {string} details.targetEmail
+         * @param {string} details.otpCode
+         */
+        sendPasswordResetOTP: async function(details) {
+            const { userName, targetEmail, otpCode } = details;
+            const config = window.TRACKED_EMAIL_CONFIG || {};
+
+            console.log(`[Password Reset] Preparing OTP verification email for ${userName} -> ${targetEmail}`);
+
+            // 1. If EmailJS SDK is loaded and credentials provided, send real email to Gmail
+            if (window.emailjs && config.PUBLIC_KEY && config.PUBLIC_KEY !== "YOUR_PUBLIC_KEY") {
+                try {
+                    window.emailjs.init({ publicKey: config.PUBLIC_KEY });
+                    const response = await window.emailjs.send(
+                        config.SERVICE_ID,
+                        config.TEMPLATE_ID,
+                        {
+                            to_email: targetEmail,
+                            to_name: userName || "User",
+                            student_name: userName || "User",
+                            message: `Your TrackED Portal password reset verification code is: ${otpCode}. This code will expire in 10 minutes. If you did not request this, your account is safe and you can ignore this email.`
+                        }
+                    );
+                    console.log("[Password Reset] OTP email dispatched via EmailJS:", response);
+                    return { success: true, method: "emailjs", response };
+                } catch (err) {
+                    console.warn("[Password Reset] EmailJS send encountered an issue:", err);
+                }
+            }
+
+            // 2. Safe Fallback & Console Audit Log
+            console.log(`%c[TrackED Password Reset OTP] CODE FOR ${targetEmail}: ${otpCode}`, "color: #10b981; font-weight: bold; font-size: 15px;");
+            return { success: true, method: "logged", otpCode };
         }
     };
 })();
