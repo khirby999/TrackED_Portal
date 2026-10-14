@@ -1092,17 +1092,33 @@ const SUPABASE_CONFIG = {
             }
         },
 
-        deleteCourse: async function (courseName) {
+        deleteCourse: async function (courseName, optTeacherId) {
             const client = getClient();
             if (!client) return false;
             try {
-                const teacherId = (localStorage.getItem("tracked_teacher_id") || "T-2024-0042").trim();
+                const teacherId = (optTeacherId || localStorage.getItem("tracked_teacher_id") || "T-2024-0042").trim();
                 const cleanName = (courseName || "").trim();
 
-                // 1. Resolve exact course_id (check this teacher first, then any teacher)
-                let courseId = await this._getCourseId(cleanName);
+                // 1. Resolve exact course_id (check this teacher first, then fallback)
+                let courseId = null;
+                if (teacherId) {
+                    const { data: tcData } = await client
+                        .from("courses")
+                        .select("course_id")
+                        .ilike("course_name", cleanName)
+                        .ilike("teacher_id", teacherId)
+                        .limit(1);
+                    if (tcData && tcData.length > 0) courseId = tcData[0].course_id;
+                }
                 if (!courseId) {
-                    const { data: cData } = await client.from("courses").select("course_id").ilike("course_name", cleanName).limit(1);
+                    courseId = await this._getCourseId(cleanName);
+                }
+                if (!courseId) {
+                    const { data: cData } = await client
+                        .from("courses")
+                        .select("course_id")
+                        .ilike("course_name", cleanName)
+                        .limit(1);
                     if (cData && cData.length > 0) courseId = cData[0].course_id;
                 }
 
@@ -1140,7 +1156,7 @@ const SUPABASE_CONFIG = {
                     } catch(e) {}
 
                     try {
-                        // CRITICAL: Delete enrollments so students are immediately disassociated from this course
+                        // Delete enrollments so students are immediately disassociated from this course
                         await client.from("course_enrollments").delete().eq("course_id", courseId);
                     } catch(e) {}
 
@@ -1150,18 +1166,63 @@ const SUPABASE_CONFIG = {
                         console.warn("[TrackED Backend] Error deleting course by ID:", delErr);
                     } else {
                         console.log(`[TrackED Backend] Course "${cleanName}" (ID ${courseId}) completely deleted from Supabase Cloud! 🗑️`);
-                        return true;
                     }
+                } else {
+                    // Fallback: match by course_name case-insensitively and teacher_id
+                    let delQuery = client.from("courses").delete().ilike("course_name", cleanName);
+                    if (teacherId) {
+                        delQuery = delQuery.ilike("teacher_id", teacherId);
+                    }
+                    const { error: err2 } = await delQuery;
+                    if (err2) throw err2;
                 }
 
-                // 2. Fallback: match by course_name case-insensitively and teacher_id
-                let delQuery = client.from("courses").delete().ilike("course_name", cleanName);
+                // Clean local storage keys for this course
+                const delNameLower = cleanName.toLowerCase();
+                localStorage.removeItem(`tracked_enrolled_${cleanName}`);
+                localStorage.removeItem(`tracked_enrolled_${delNameLower}`);
+                localStorage.removeItem(`tracked_course_activities_${cleanName}`);
+                localStorage.removeItem(`tracked_activity_scores_${cleanName}`);
+                localStorage.removeItem(`tracked_course_quizzes_${cleanName}`);
+                localStorage.removeItem(`tracked_quiz_scores_${cleanName}`);
+                localStorage.removeItem(`tracked_course_exams_${cleanName}`);
+                localStorage.removeItem(`tracked_exam_scores_${cleanName}`);
+                localStorage.removeItem(`tracked_course_attendance_${cleanName}`);
+
                 if (teacherId) {
-                    delQuery = delQuery.ilike("teacher_id", teacherId);
+                    const tKey = teacherId.toLowerCase().replace(/[^a-z0-9]/g, "_");
+                    localStorage.removeItem(`tracked_enrolled_${tKey}_${cleanName}`);
+                    localStorage.removeItem(`tracked_enrolled_${tKey}_${delNameLower}`);
+                    localStorage.removeItem(`tracked_course_activities_${tKey}_${cleanName}`);
+                    localStorage.removeItem(`tracked_activity_scores_${tKey}_${cleanName}`);
+                    localStorage.removeItem(`tracked_course_quizzes_${tKey}_${cleanName}`);
+                    localStorage.removeItem(`tracked_quiz_scores_${tKey}_${cleanName}`);
+                    localStorage.removeItem(`tracked_course_exams_${tKey}_${cleanName}`);
+                    localStorage.removeItem(`tracked_exam_scores_${tKey}_${cleanName}`);
+                    localStorage.removeItem(`tracked_course_attendance_${tKey}_${cleanName}`);
+
+                    try {
+                        let tCourses = JSON.parse(localStorage.getItem(`tracked_teacher_courses_${tKey}`) || "[]");
+                        if (Array.isArray(tCourses)) {
+                            tCourses = tCourses.filter(c => (c.name || "").trim().toLowerCase() !== delNameLower);
+                            localStorage.setItem(`tracked_teacher_courses_${tKey}`, JSON.stringify(tCourses));
+                        }
+                    } catch(e) {}
                 }
-                const { error: err2 } = await delQuery;
-                if (err2) throw err2;
-                console.log(`[TrackED Backend] Course "${courseName}" deleted from Supabase Cloud! 🗑️`);
+
+                // Remove from all student cached course lists
+                Object.keys(localStorage).forEach(key => {
+                    if (key.startsWith("tracked_student_courses_")) {
+                        try {
+                            const list = JSON.parse(localStorage.getItem(key) || "[]");
+                            if (Array.isArray(list)) {
+                                const updatedList = list.filter(sc => (sc.name || "").trim().toLowerCase() !== delNameLower);
+                                localStorage.setItem(key, JSON.stringify(updatedList));
+                            }
+                        } catch(e) {}
+                    }
+                });
+
                 return true;
             } catch (e) {
                 console.warn("[TrackED Backend] Cloud course delete failed:", e);
@@ -2040,10 +2101,92 @@ const SUPABASE_CONFIG = {
 
             if (client) {
                 try {
+                    // 1. Find and cascade delete all courses belonging to this instructor
+                    const { data: courses } = await client
+                        .from("courses")
+                        .select("course_id, course_name")
+                        .ilike("teacher_id", tid);
+
+                    if (Array.isArray(courses) && courses.length > 0) {
+                        for (const c of courses) {
+                            const cId = c.course_id;
+                            const cName = c.course_name;
+
+                            // Cascade delete activities & scores
+                            try {
+                                const { data: acts } = await client.from("activities").select("activity_id").eq("course_id", cId);
+                                if (acts && acts.length > 0) {
+                                    const aIds = acts.map(a => a.activity_id);
+                                    await client.from("activity_scores").delete().in("activity_id", aIds);
+                                    await client.from("activities").delete().eq("course_id", cId);
+                                }
+                            } catch (e) {}
+
+                            // Cascade delete quizzes & scores
+                            try {
+                                const { data: qzs } = await client.from("quizzes").select("quiz_id").eq("course_id", cId);
+                                if (qzs && qzs.length > 0) {
+                                    const qIds = qzs.map(q => q.quiz_id);
+                                    await client.from("quiz_scores").delete().in("quiz_id", qIds);
+                                    await client.from("quizzes").delete().eq("course_id", cId);
+                                }
+                            } catch (e) {}
+
+                            // Cascade delete exams & scores
+                            try {
+                                const { data: exms } = await client.from("exams").select("exam_id").eq("course_id", cId);
+                                if (exms && exms.length > 0) {
+                                    const xIds = exms.map(x => x.exam_id);
+                                    await client.from("exam_scores").delete().in("exam_id", xIds);
+                                    await client.from("exams").delete().eq("course_id", cId);
+                                }
+                            } catch (e) {}
+
+                            // Cascade delete attendance
+                            try {
+                                await client.from("attendance").delete().eq("course_id", cId);
+                            } catch (e) {}
+
+                            // Cascade delete course enrollments
+                            try {
+                                await client.from("course_enrollments").delete().eq("course_id", cId);
+                            } catch (e) {}
+
+                            // Delete the course itself
+                            await client.from("courses").delete().eq("course_id", cId);
+
+                            // Clean course local storage keys
+                            const delNameLower = (cName || "").trim().toLowerCase();
+                            localStorage.removeItem(`tracked_enrolled_${cName}`);
+                            localStorage.removeItem(`tracked_enrolled_${delNameLower}`);
+                            localStorage.removeItem(`tracked_course_activities_${cName}`);
+                            localStorage.removeItem(`tracked_activity_scores_${cName}`);
+                            localStorage.removeItem(`tracked_course_quizzes_${cName}`);
+                            localStorage.removeItem(`tracked_quiz_scores_${cName}`);
+                            localStorage.removeItem(`tracked_course_exams_${cName}`);
+                            localStorage.removeItem(`tracked_exam_scores_${cName}`);
+                            localStorage.removeItem(`tracked_course_attendance_${cName}`);
+
+                            // Also remove from all student-scoped cached course lists
+                            Object.keys(localStorage).forEach(key => {
+                                if (key.startsWith("tracked_student_courses_")) {
+                                    try {
+                                        const list = JSON.parse(localStorage.getItem(key) || "[]");
+                                        if (Array.isArray(list)) {
+                                            const updatedList = list.filter(sc => (sc.name || "").trim().toLowerCase() !== delNameLower);
+                                            localStorage.setItem(key, JSON.stringify(updatedList));
+                                        }
+                                    } catch(e) {}
+                                }
+                            });
+                        }
+                    }
+
+                    // 2. Delete teacher from teachers table
                     const { error } = await client
                         .from("teachers")
                         .delete()
-                        .eq("teacher_id", tid);
+                        .ilike("teacher_id", tid);
 
                     if (error) {
                         console.error("[TrackED Backend] Supabase delete teacher error:", error);
@@ -2067,7 +2210,13 @@ const SUPABASE_CONFIG = {
             localStorage.removeItem(`tracked_teacher_phone_${tidKey}`);
             localStorage.removeItem(`tracked_teacher_avatar_${tidKey}`);
 
-            return { success: true, message: `Faculty ${tid} deleted successfully.` };
+            Object.keys(localStorage).forEach(k => {
+                if (k.includes(tidKey)) {
+                    localStorage.removeItem(k);
+                }
+            });
+
+            return { success: true, message: `Faculty ${tid} and all associated courses deleted successfully.` };
         },
 
         /**

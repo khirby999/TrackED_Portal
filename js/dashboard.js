@@ -272,6 +272,15 @@ document.addEventListener("DOMContentLoaded", () => {
                         }
                     });
 
+                    // Also clear selected course if it was deleted
+                    const selCourse = (localStorage.getItem("tracked_student_selected_course") || "").trim().toLowerCase();
+                    if (selCourse && !activeCloudNames.has(selCourse)) {
+                        localStorage.removeItem("tracked_student_selected_course");
+                        localStorage.removeItem("tracked_student_selected_course_code");
+                        localStorage.removeItem("tracked_student_selected_instructor");
+                    }
+
+
                     cloudCourses.forEach(cc => {
                         const enrollKey = `tracked_enrolled_${cc.name}`;
                         let enrollList = [];
