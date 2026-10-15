@@ -33,6 +33,12 @@ header {
     gap: 16px;
 }
 
+.header-left h2 {
+    color: #fff;
+    font-size: 22px;
+    font-weight: 600;
+}
+
 .header-back-btn {
     width: 38px;
     height: 38px;

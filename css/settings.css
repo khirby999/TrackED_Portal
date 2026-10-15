@@ -28,6 +28,18 @@ header {
     flex-shrink: 0;
 }
 
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.header-left h2 {
+    color: #fff;
+    font-size: 22px;
+    font-weight: 600;
+}
+
 .left-menu {
     display: flex;
     align-items: center;

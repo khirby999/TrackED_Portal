@@ -18,10 +18,7 @@
             <a href="../dashboard.html" class="header-back-btn" title="Back to Courses">
                 <i class="fa-solid fa-arrow-left"></i>
             </a>
-            <div class="left-menu">
-                <img src="../images/default-avatar.svg" alt="Profile Picture" class="profile" id="headerProfileImg">
-                <h4 id="headerStudentName">Billie Eilish</h4>
-            </div>
+            <h2>Course Hub</h2>
         </div>
 
         <div class="right-menu">
@@ -44,7 +41,7 @@
         <section class="dashboard-content">
             <div class="dashboard-header">
                 <h2 id="courseHeading">Programming Fundamentals</h2>
-                <p id="courseInstructor">Instructor: Prof. Billie Eilish • Select a module to view your records.</p>
+                <p id="courseInstructor">Select a module to view your records.</p>
             </div>
 
             <div class="tabs-grid">
@@ -127,21 +124,6 @@
 
             const courseHeading    = document.getElementById("courseHeading");
             const courseInstructor = document.getElementById("courseInstructor");
-            const headerStudentName = document.getElementById("headerStudentName");
-
-            const studentName = localStorage.getItem("tracked_student_name") || "Student";
-            if (headerStudentName) {
-                headerStudentName.textContent = studentName;
-            }
-
-            const headerProfileImg = document.getElementById("headerProfileImg");
-            const studentId = localStorage.getItem("tracked_student_id") || "";
-            const currentSidKey = studentId.trim().toLowerCase();
-            const studentAvatar = localStorage.getItem(`tracked_student_avatar_${currentSidKey}`) ||
-                                 (studentId === "2024-00123" ? "../images/profile.jpg" : "../images/default-avatar.svg");
-            if (headerProfileImg) {
-                headerProfileImg.src = studentAvatar;
-            }
 
             if (courseHeading) {
                 courseHeading.textContent = activeCourse;
