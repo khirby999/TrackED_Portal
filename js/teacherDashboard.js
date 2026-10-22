@@ -30,6 +30,270 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // Shared Date & HTML helpers
+    function escapeHtml(str) {
+        if (str === null || str === undefined) return "";
+        const div = document.createElement("div");
+        div.textContent = String(str);
+        return div.innerHTML;
+    }
+
+    // =========================================
+    // CUSTOM MODAL POPUP ALERT SYSTEM (Instructor UI)
+    // Small window pop-up in center of screen
+    // =========================================
+    function ensureTrackedAlertStyles() {
+        if (document.getElementById("trackedAlertStyles")) return;
+        const style = document.createElement("style");
+        style.id = "trackedAlertStyles";
+        style.textContent = `
+            .tracked-alert-overlay {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100vw;
+                height: 100vh;
+                background: rgba(15, 23, 42, 0.52);
+                backdrop-filter: blur(3px);
+                -webkit-backdrop-filter: blur(3px);
+                z-index: 999999;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 16px;
+                box-sizing: border-box;
+                animation: trackedAlertFadeIn 0.18s ease-out;
+            }
+            .tracked-alert-box {
+                background: #ffffff;
+                border-radius: 18px;
+                width: 100%;
+                max-width: 360px;
+                padding: 24px 22px 20px;
+                box-shadow: 0 20px 45px rgba(0, 0, 0, 0.22), 0 0 0 1px rgba(0, 0, 0, 0.06);
+                position: relative;
+                text-align: center;
+                box-sizing: border-box;
+                font-family: 'Poppins', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                animation: trackedAlertPopIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+            }
+            .tracked-alert-close-btn {
+                position: absolute;
+                top: 12px;
+                right: 12px;
+                width: 30px;
+                height: 30px;
+                border-radius: 50%;
+                background: #f1f5f9;
+                border: none;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: #64748b;
+                font-size: 13px;
+                transition: all 0.2s ease;
+                outline: none;
+            }
+            .tracked-alert-close-btn:hover {
+                background: #e2e8f0;
+                color: #0f172a;
+                transform: rotate(90deg);
+            }
+            .tracked-alert-icon-badge {
+                width: 48px;
+                height: 48px;
+                border-radius: 14px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                margin: 0 auto 14px;
+                font-size: 22px;
+            }
+            .tracked-alert-icon-badge.warning {
+                background: #fef3c7;
+                color: #d97706;
+                border: 1px solid #fde68a;
+            }
+            .tracked-alert-icon-badge.info {
+                background: #eff6ff;
+                color: #2563eb;
+                border: 1px solid #bfdbfe;
+            }
+            .tracked-alert-icon-badge.danger {
+                background: #fee2e2;
+                color: #dc2626;
+                border: 1px solid #fecaca;
+            }
+            .tracked-alert-icon-badge.success {
+                background: #dcfce7;
+                color: #16a34a;
+                border: 1px solid #bbf7d0;
+            }
+            .tracked-alert-title {
+                font-size: 17px;
+                font-weight: 600;
+                color: #0f172a;
+                margin: 0 0 6px;
+                line-height: 1.3;
+            }
+            .tracked-alert-msg {
+                font-size: 13px;
+                color: #475569;
+                line-height: 1.5;
+                margin: 0 0 18px;
+                word-wrap: break-word;
+            }
+            .tracked-alert-ok-btn {
+                width: 100%;
+                height: 40px;
+                background: #2563eb;
+                color: #ffffff;
+                border: none;
+                border-radius: 10px;
+                font-size: 13.5px;
+                font-weight: 600;
+                cursor: pointer;
+                font-family: inherit;
+                transition: all 0.2s ease;
+                box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 8px;
+                outline: none;
+            }
+            .tracked-alert-ok-btn:hover {
+                background: #1d4ed8;
+                box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35);
+                transform: translateY(-1px);
+            }
+            .tracked-alert-ok-btn:focus-visible {
+                box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.4);
+            }
+            @keyframes trackedAlertFadeIn {
+                from { opacity: 0; }
+                to { opacity: 1; }
+            }
+            @keyframes trackedAlertPopIn {
+                from {
+                    opacity: 0;
+                    transform: scale(0.92) translateY(-8px);
+                }
+                to {
+                    opacity: 1;
+                    transform: scale(1) translateY(0);
+                }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+
+    function showTrackedAlert(message, title, type) {
+        if (!document.body) {
+            document.addEventListener("DOMContentLoaded", () => showTrackedAlert(message, title, type));
+            return;
+        }
+
+        ensureTrackedAlertStyles();
+
+        const existing = document.getElementById("trackedAlertOverlay");
+        if (existing) existing.remove();
+
+        const msgStr = String(message || "");
+        let alertType = type;
+        let alertTitle = title;
+        let iconHtml = '<i class="fa-solid fa-circle-info"></i>';
+
+        if (!alertType) {
+            if (/saturday|sunday|weekend/i.test(msgStr)) {
+                alertType = "warning";
+                alertTitle = alertTitle || "Class Schedule Notice";
+                iconHtml = '<i class="fa-solid fa-calendar-xmark"></i>';
+            } else if (/prior to|future|cannot record/i.test(msgStr)) {
+                alertType = "warning";
+                alertTitle = alertTitle || "Date Restriction";
+                iconHtml = '<i class="fa-solid fa-calendar-day"></i>';
+            } else if (/locked|saved|already/i.test(msgStr)) {
+                alertType = "info";
+                alertTitle = alertTitle || "Record Notice";
+                iconHtml = '<i class="fa-solid fa-lock"></i>';
+            } else if (/error|failed|invalid/i.test(msgStr)) {
+                alertType = "danger";
+                alertTitle = alertTitle || "Notice";
+                iconHtml = '<i class="fa-solid fa-circle-exclamation"></i>';
+            } else {
+                alertType = "info";
+                alertTitle = alertTitle || "Notice";
+                iconHtml = '<i class="fa-solid fa-circle-info"></i>';
+            }
+        } else {
+            if (alertType === "warning") {
+                iconHtml = /saturday|sunday/i.test(msgStr) ? '<i class="fa-solid fa-calendar-xmark"></i>' : '<i class="fa-solid fa-triangle-exclamation"></i>';
+            } else if (alertType === "danger") {
+                iconHtml = '<i class="fa-solid fa-circle-exclamation"></i>';
+            } else if (alertType === "success") {
+                iconHtml = '<i class="fa-solid fa-circle-check"></i>';
+            } else {
+                iconHtml = '<i class="fa-solid fa-circle-info"></i>';
+            }
+            alertTitle = alertTitle || "Notice";
+        }
+
+        const overlay = document.createElement("div");
+        overlay.className = "tracked-alert-overlay";
+        overlay.id = "trackedAlertOverlay";
+
+        overlay.innerHTML = `
+            <div class="tracked-alert-box" role="dialog" aria-modal="true">
+                <button type="button" class="tracked-alert-close-btn" id="trackedAlertCloseBtn" title="Close" aria-label="Close">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+                <div class="tracked-alert-icon-badge ${escapeHtml(alertType)}">
+                    ${iconHtml}
+                </div>
+                <h3 class="tracked-alert-title">${escapeHtml(alertTitle)}</h3>
+                <p class="tracked-alert-msg">${escapeHtml(msgStr)}</p>
+                <button type="button" class="tracked-alert-ok-btn" id="trackedAlertOkBtn">
+                    Got it
+                </button>
+            </div>
+        `;
+
+        document.body.appendChild(overlay);
+
+        function closeAlert() {
+            document.removeEventListener("keydown", keyHandler);
+            overlay.remove();
+        }
+
+        function keyHandler(e) {
+            if (e.key === "Escape" || e.key === "Enter") {
+                e.preventDefault();
+                closeAlert();
+            }
+        }
+
+        const okBtn = overlay.querySelector("#trackedAlertOkBtn");
+        const closeBtn = overlay.querySelector("#trackedAlertCloseBtn");
+
+        if (okBtn) okBtn.addEventListener("click", closeAlert);
+        if (closeBtn) closeBtn.addEventListener("click", closeAlert);
+
+        overlay.addEventListener("click", (e) => {
+            if (e.target === overlay) closeAlert();
+        });
+
+        document.addEventListener("keydown", keyHandler);
+
+        setTimeout(() => {
+            if (okBtn) okBtn.focus();
+        }, 50);
+    }
+
+    // Override browser window.alert so all alerts render as modern small window popups
+    window.alert = function(msg) {
+        showTrackedAlert(msg);
+    };
     function getTodayLocalDate() {
         const now = new Date();
         const year = now.getFullYear();
@@ -444,7 +708,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
             }, 300);
         } else {
-            alert("Pop-up window was blocked by your browser. Please allow pop-ups for TrackED to print or save reports as PDF.");
+            showTrackedAlert("Pop-up window was blocked by your browser. Please allow pop-ups for TrackED to print or save reports as PDF.", "Pop-up Blocked", "warning");
         }
     }
 
@@ -1577,13 +1841,6 @@ document.addEventListener("DOMContentLoaded", () => {
         savedCourses.forEach(renderCourseCard);
     }
 
-    function escapeHtml(str) {
-        if (!str) return "";
-        const div = document.createElement("div");
-        div.textContent = str;
-        return div.innerHTML;
-    }
-
     // Initial render of saved courses
     refreshCoursesGrid();
 
@@ -2457,7 +2714,7 @@ document.addEventListener("DOMContentLoaded", () => {
             saveScoresBtn.addEventListener("click", () => {
                 const inputs = activityTableBody.querySelectorAll(".score-num-input:not([disabled])");
                 if (inputs.length === 0) {
-                    alert("No new scores to save or all activity scores are already locked.");
+                    showTrackedAlert("No new scores to save or all activity scores are already locked.", "Activity Scores", "info");
                     return;
                 }
 
@@ -2635,13 +2892,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
         function openPrintActivityModal() {
             if (currentActivities.length === 0) {
-                alert("No activities found for this course. Please create an activity first.");
+                showTrackedAlert("No activities found for this course. Please create an activity first.", "No Activities", "info");
                 return;
             }
             const lockedActs = getLockedActivities();
             const savedList = currentActivities.filter(a => lockedActs.includes(parseInt(a.num, 10)));
             if (savedList.length === 0) {
-                alert("No saved activities found for this course. Please enter scores and click 'Save Scores' first before printing.");
+                showTrackedAlert("No saved activities found for this course. Please enter scores and click 'Save Scores' first before printing.", "Save Required", "warning");
                 return;
             }
             if (printActivitySelect) {
@@ -3066,7 +3323,7 @@ document.addEventListener("DOMContentLoaded", () => {
             saveQuizScoresBtn.addEventListener("click", () => {
                 const inputs = quizTableBody.querySelectorAll(".score-num-input:not([disabled])");
                 if (inputs.length === 0) {
-                    alert("No new scores to save or all quiz scores are already locked.");
+                    showTrackedAlert("No new scores to save or all quiz scores are already locked.", "Quiz Scores", "info");
                     return;
                 }
 
@@ -3243,13 +3500,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
         function openPrintQuizModal() {
             if (currentQuizzes.length === 0) {
-                alert("No quizzes found for this course. Please create a quiz first.");
+                showTrackedAlert("No quizzes found for this course. Please create a quiz first.", "No Quizzes", "info");
                 return;
             }
             const lockedQs = getLockedQuizzes();
             const savedList = currentQuizzes.filter(q => lockedQs.includes(parseInt(q.num, 10)));
             if (savedList.length === 0) {
-                alert("No saved quizzes found for this course. Please enter scores and click 'Save Scores' first before printing.");
+                showTrackedAlert("No saved quizzes found for this course. Please enter scores and click 'Save Scores' first before printing.", "Save Required", "warning");
                 return;
             }
             if (printQuizSelect) {
@@ -3674,7 +3931,7 @@ document.addEventListener("DOMContentLoaded", () => {
             saveExamScoresBtn.addEventListener("click", () => {
                 const inputs = examTableBody.querySelectorAll(".score-num-input:not([disabled])");
                 if (inputs.length === 0) {
-                    alert("No new scores to save or all exam scores are already locked.");
+                    showTrackedAlert("No new scores to save or all exam scores are already locked.", "Exam Scores", "info");
                     return;
                 }
 
@@ -3851,13 +4108,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
         function openPrintExamModal() {
             if (currentExams.length === 0) {
-                alert("No exams found for this course. Please create an exam first.");
+                showTrackedAlert("No exams found for this course. Please create an exam first.", "No Exams", "info");
                 return;
             }
             const lockedExs = getLockedExams();
             const savedList = currentExams.filter(ex => lockedExs.includes(parseInt(ex.num, 10)));
             if (savedList.length === 0) {
-                alert("No saved exams found for this course. Please enter scores and click 'Save Scores' first before printing.");
+                showTrackedAlert("No saved exams found for this course. Please enter scores and click 'Save Scores' first before printing.", "Save Required", "warning");
                 return;
             }
             if (printExamSelect) {
@@ -3975,13 +4232,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
             // Clamp past date prior to course creation
             if (dateStr && dateStr < courseMinDate) {
-                alert(`Cannot record attendance prior to the course creation date (${formatDisplayDate(courseMinDate)}). Setting date to ${formatDisplayDate(courseMinDate)}.`);
+                showTrackedAlert(`Cannot record attendance prior to the course creation date (${formatDisplayDate(courseMinDate)}). Setting date to ${formatDisplayDate(courseMinDate)}.`, "Date Restriction", "warning");
                 dateStr = courseMinDate;
                 attendanceDateInput.value = courseMinDate;
             }
             // Clamp future date
             if (dateStr && dateStr > todayStr) {
-                alert("Cannot record attendance for future dates. Setting date to today.");
+                showTrackedAlert("Cannot record attendance for future dates. Setting date to today.", "Date Restriction", "warning");
                 dateStr = todayStr;
                 attendanceDateInput.value = todayStr;
             }
@@ -3989,22 +4246,22 @@ document.addEventListener("DOMContentLoaded", () => {
             if (isSaturday(dateStr)) {
                 const validDate = getLatestValidClassDate(dateStr);
                 if (validDate >= courseMinDate) {
-                    alert("Cannot record attendance on Saturday as there are no Saturday classes. Selecting most recent class date (Friday).");
+                    showTrackedAlert("Cannot record attendance on Saturday as there are no Saturday classes. Selecting most recent class date (Friday).", "Class Schedule Notice", "warning");
                     dateStr = validDate;
                     attendanceDateInput.value = validDate;
                 } else {
-                    alert("Cannot record attendance on Saturday as there are no Saturday classes.");
+                    showTrackedAlert("Cannot record attendance on Saturday as there are no Saturday classes.", "Class Schedule Notice", "warning");
                     dateStr = courseMinDate;
                     attendanceDateInput.value = courseMinDate;
                 }
             } else if (isSunday(dateStr)) {
                 const validDate = getLatestValidClassDate(dateStr);
                 if (validDate >= courseMinDate) {
-                    alert("Cannot record attendance on Sunday as there are no Sunday classes. Selecting most recent class date (Friday).");
+                    showTrackedAlert("Cannot record attendance on Sunday as there are no Sunday classes. Selecting most recent class date (Friday).", "Class Schedule Notice", "warning");
                     dateStr = validDate;
                     attendanceDateInput.value = validDate;
                 } else {
-                    alert("Cannot record attendance on Sunday as there are no Sunday classes.");
+                    showTrackedAlert("Cannot record attendance on Sunday as there are no Sunday classes.", "Class Schedule Notice", "warning");
                     dateStr = courseMinDate;
                     attendanceDateInput.value = courseMinDate;
                 }
@@ -4148,33 +4405,33 @@ document.addEventListener("DOMContentLoaded", () => {
             const minD = getCourseCreationDate(currentActiveCourse);
             const maxD = getTodayLocalDate();
             if (chosenDate < minD) {
-                alert(`Cannot record attendance prior to the course creation date (${formatDisplayDate(minD)}). Setting date to ${formatDisplayDate(minD)}.`);
+                showTrackedAlert(`Cannot record attendance prior to the course creation date (${formatDisplayDate(minD)}). Setting date to ${formatDisplayDate(minD)}.`, "Date Restriction", "warning");
                 attendanceDateInput.value = minD;
                 chosenDate = minD;
             } else if (chosenDate > maxD) {
-                alert("Cannot record attendance for future dates. Setting date to today.");
+                showTrackedAlert("Cannot record attendance for future dates. Setting date to today.", "Date Restriction", "warning");
                 attendanceDateInput.value = maxD;
                 chosenDate = maxD;
             }
             if (isSaturday(chosenDate)) {
                 const validDate = getLatestValidClassDate(chosenDate);
                 if (validDate >= minD) {
-                    alert("Cannot record attendance on Saturday as there are no Saturday classes. Selecting most recent class date (Friday).");
+                    showTrackedAlert("Cannot record attendance on Saturday as there are no Saturday classes. Selecting most recent class date (Friday).", "Class Schedule Notice", "warning");
                     chosenDate = validDate;
                     attendanceDateInput.value = validDate;
                 } else {
-                    alert("Cannot record attendance on Saturday as there are no Saturday classes.");
+                    showTrackedAlert("Cannot record attendance on Saturday as there are no Saturday classes.", "Class Schedule Notice", "warning");
                     chosenDate = minD;
                     attendanceDateInput.value = minD;
                 }
             } else if (isSunday(chosenDate)) {
                 const validDate = getLatestValidClassDate(chosenDate);
                 if (validDate >= minD) {
-                    alert("Cannot record attendance on Sunday as there are no Sunday classes. Selecting most recent class date (Friday).");
+                    showTrackedAlert("Cannot record attendance on Sunday as there are no Sunday classes. Selecting most recent class date (Friday).", "Class Schedule Notice", "warning");
                     chosenDate = validDate;
                     attendanceDateInput.value = validDate;
                 } else {
-                    alert("Cannot record attendance on Sunday as there are no Sunday classes.");
+                    showTrackedAlert("Cannot record attendance on Sunday as there are no Sunday classes.", "Class Schedule Notice", "warning");
                     chosenDate = minD;
                     attendanceDateInput.value = minD;
                 }
@@ -4192,7 +4449,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (isSaturday(todayStr)) {
                     const validDate = getLatestValidClassDate(todayStr);
                     const targetDate = validDate >= courseMin ? validDate : courseMin;
-                    alert("Today is Saturday. There are no Saturday classes, so displaying most recent class date.");
+                    showTrackedAlert("Today is Saturday. There are no Saturday classes, so displaying most recent class date (Friday).", "Class Schedule Notice", "warning");
                     attendanceDateInput.value = targetDate;
                     loadAttendanceForDate(targetDate);
                     return;
@@ -4200,7 +4457,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (isSunday(todayStr)) {
                     const validDate = getLatestValidClassDate(todayStr);
                     const targetDate = validDate >= courseMin ? validDate : courseMin;
-                    alert("Today is Sunday. There are no Sunday classes, so displaying most recent class date.");
+                    showTrackedAlert("Today is Sunday. There are no Sunday classes, so displaying most recent class date (Friday).", "Class Schedule Notice", "warning");
                     attendanceDateInput.value = targetDate;
                     loadAttendanceForDate(targetDate);
                     return;
@@ -4225,7 +4482,7 @@ document.addEventListener("DOMContentLoaded", () => {
         function doPrintAttendance() {
             const dateKey = (attendanceDateInput && attendanceDateInput.value) ? attendanceDateInput.value : getTodayLocalDate();
             if (!dateKey) {
-                alert("Please select a date first.");
+                showTrackedAlert("Please select a date first.", "Date Required", "info");
                 return;
             }
             const isSaved = Boolean(attendanceMap[dateKey]);
@@ -4282,31 +4539,31 @@ document.addEventListener("DOMContentLoaded", () => {
             saveAttendanceBtn.addEventListener("click", () => {
                 const dateKey = attendanceDateInput.value;
                 if (!dateKey) {
-                    alert("Please select a date first.");
+                    showTrackedAlert("Please select a date first.", "Date Required", "info");
                     return;
                 }
 
                 const courseMinDate = getCourseCreationDate(currentActiveCourse);
                 const todayStr = getTodayLocalDate();
                 if (dateKey < courseMinDate) {
-                    alert(`Cannot record attendance prior to the course creation date (${formatDisplayDate(courseMinDate)}).`);
+                    showTrackedAlert(`Cannot record attendance prior to the course creation date (${formatDisplayDate(courseMinDate)}).`, "Date Restriction", "warning");
                     return;
                 }
                 if (dateKey > todayStr) {
-                    alert("Cannot record attendance for future dates.");
+                    showTrackedAlert("Cannot record attendance for future dates.", "Date Restriction", "warning");
                     return;
                 }
                 if (isSaturday(dateKey)) {
-                    alert("Cannot record attendance on Saturday as there are no Saturday classes.");
+                    showTrackedAlert("Cannot record attendance on Saturday as there are no Saturday classes.", "Class Schedule Notice", "warning");
                     return;
                 }
                 if (isSunday(dateKey)) {
-                    alert("Cannot record attendance on Sunday as there are no Sunday classes.");
+                    showTrackedAlert("Cannot record attendance on Sunday as there are no Sunday classes.", "Class Schedule Notice", "warning");
                     return;
                 }
 
                 if (attendanceMap[dateKey]) {
-                    alert("Attendance for this date has already been saved and is locked.");
+                    showTrackedAlert("Attendance for this date has already been saved and is locked.", "Record Locked", "info");
                     return;
                 }
 
