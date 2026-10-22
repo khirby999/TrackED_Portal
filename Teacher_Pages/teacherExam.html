@@ -95,10 +95,10 @@
 
             <div class="modal-header">
                 <div class="modal-icon-badge" style="background: rgba(15, 118, 110, 0.12); color: #0f766e;">
-                    <i class="fa-solid fa-print"></i>
+                    <i class="fa-solid fa-file-pdf"></i>
                 </div>
                 <h3>Print Exam Scores</h3>
-                <p>Select a saved exam to generate and print its official score sheet PDF.</p>
+                <p>Select a saved exam to generate and download its official score sheet PDF.</p>
             </div>
 
             <form id="printExamForm" class="modal-form">
@@ -114,7 +114,7 @@
                 <div class="modal-actions" style="margin-top: 20px;">
                     <button type="button" class="btn-cancel" id="cancelPrintExamModalBtn">Cancel</button>
                     <button type="submit" class="btn-save" id="doPrintExamBtn" style="background: #0f766e;">
-                        <i class="fa-solid fa-print"></i> Print PDF
+                        <i class="fa-solid fa-file-pdf"></i> Download PDF
                     </button>
                 </div>
             </form>
@@ -160,8 +160,8 @@
                     </div>
 
                     <div class="card-header-actions" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-                        <button class="print-btn" id="printExamBtn" type="button" title="Print exam scores PDF">
-                            <i class="fa-solid fa-print"></i> Print Scores
+                        <button class="print-btn" id="printExamBtn" type="button" title="Download exam scores PDF">
+                            <i class="fa-solid fa-file-pdf"></i> Print PDF
                         </button>
                         <button class="add-exam-btn" id="addExamBtn">
                             <i class="fa-solid fa-plus"></i> Add Exam
@@ -184,13 +184,10 @@
                     </table>
                 </div>
 
-                <!-- SAVE & PRINT BUTTONS -->
-                <div class="save-container" style="display: flex; gap: 12px; justify-content: flex-end; align-items: center; flex-wrap: wrap;">
+                <!-- SAVE BUTTON -->
+                <div class="save-container">
                     <button class="save-btn" id="saveExamScoresBtn">
                         <i class="fa-solid fa-floppy-disk"></i> Save Scores
-                    </button>
-                    <button class="print-btn" id="printExamFooterBtn" type="button" title="Print exam scores PDF">
-                        <i class="fa-solid fa-print"></i> Print Scores (PDF)
                     </button>
                 </div>
             </div>
@@ -206,8 +203,9 @@
         </div>
     </footer>
 
-    <!-- Supabase CDN + Backend Adapter -->
+    <!-- Supabase CDN + PDF Library + Backend Adapter -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../js/html2pdf.bundle.min.js"></script>
     <script src="../js/supabaseClient.js"></script>
     <script src="../js/teacherDashboard.js"></script>
 </body>

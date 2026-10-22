@@ -725,26 +725,56 @@ tbody tr:hover td {
 .modal-actions {
     display: flex;
     gap: 12px;
-    margin-top: 6px;
+    margin-top: 18px;
+    align-items: center;
 }
 
-.btn-cancel {
+.modal-actions .btn-cancel,
+.modal-actions .btn-save {
     flex: 1;
-    padding: 12px;
-    border: 1.5px solid #e2e8f0;
-    background: #f8fafc;
-    color: #64748b;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px 18px;
     border-radius: 10px;
     font-family: inherit;
     font-size: 14px;
     font-weight: 600;
     cursor: pointer;
+    height: 46px;
+    box-sizing: border-box;
     transition: all 0.2s ease;
 }
 
-.btn-cancel:hover {
+.modal-actions .btn-cancel {
+    border: 1.5px solid #cbd5e1;
+    background: #f8fafc;
+    color: #475569;
+}
+
+.modal-actions .btn-cancel:hover {
     background: #e2e8f0;
-    color: #1e293b;
+    color: #0f172a;
+    border-color: #94a3b8;
+}
+
+.modal-actions .btn-save {
+    border: none;
+    background: rgb(6, 6, 207);
+    color: #ffffff;
+    box-shadow: 0 4px 14px rgba(6, 6, 207, 0.25);
+}
+
+.modal-actions .btn-save:hover {
+    background: #1d4ed8;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(6, 6, 207, 0.35);
+}
+
+.modal-actions .btn-save:active,
+.modal-actions .btn-cancel:active {
+    transform: translateY(0);
 }
 
 @keyframes fadeIn {

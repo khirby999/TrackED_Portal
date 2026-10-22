@@ -372,27 +372,66 @@ document.addEventListener("DOMContentLoaded", () => {
 </body>
 </html>`;
 
-        let printFrame = document.getElementById("tracked_print_frame");
-        if (!printFrame) {
-            printFrame = document.createElement("iframe");
-            printFrame.id = "tracked_print_frame";
-            printFrame.style.position = "fixed";
-            printFrame.style.right = "0";
-            printFrame.style.bottom = "0";
-            printFrame.style.width = "0";
-            printFrame.style.height = "0";
-            printFrame.style.border = "0";
-            printFrame.style.visibility = "hidden";
-            document.body.appendChild(printFrame);
+        function triggerIframePrint(content) {
+            let printFrame = document.getElementById("tracked_print_frame");
+            if (!printFrame) {
+                printFrame = document.createElement("iframe");
+                printFrame.id = "tracked_print_frame";
+                printFrame.style.position = "fixed";
+                printFrame.style.right = "0";
+                printFrame.style.bottom = "0";
+                printFrame.style.width = "0";
+                printFrame.style.height = "0";
+                printFrame.style.border = "0";
+                printFrame.style.visibility = "hidden";
+                document.body.appendChild(printFrame);
+            }
+            const doc = printFrame.contentWindow.document;
+            doc.open();
+            doc.write(content);
+            doc.close();
+            setTimeout(() => {
+                printFrame.contentWindow.focus();
+                printFrame.contentWindow.print();
+            }, 300);
         }
-        const doc = printFrame.contentWindow.document;
-        doc.open();
-        doc.write(printHtml);
-        doc.close();
-        setTimeout(() => {
-            printFrame.contentWindow.focus();
-            printFrame.contentWindow.print();
-        }, 400);
+
+        const cleanCourseCode = (courseCode || "Course").replace(/[^a-zA-Z0-9_-]/g, "_");
+        const cleanTitle = (reportTitle || "Report").replace(/[^a-zA-Z0-9_-]/g, "_");
+        const cleanDate = (displayDate || "").replace(/[^a-zA-Z0-9_-]/g, "_");
+        const downloadFilename = `TrackED_${cleanTitle}_${cleanCourseCode}_${cleanDate}.pdf`;
+
+        // Direct PDF download using html2pdf if available
+        if (typeof window.html2pdf === "function") {
+            const container = document.createElement("div");
+            container.id = "tracked_pdf_export_container";
+            container.style.position = "fixed";
+            container.style.left = "-9999px";
+            container.style.top = "0";
+            container.style.width = "780px";
+            container.style.background = "#ffffff";
+            container.innerHTML = printHtml;
+            document.body.appendChild(container);
+
+            const opt = {
+                margin:       [8, 8, 8, 8],
+                filename:     downloadFilename,
+                image:        { type: "jpeg", quality: 0.98 },
+                html2canvas:  { scale: 2, useCORS: true, logging: false },
+                jsPDF:        { unit: "mm", format: "letter", orientation: "portrait" }
+            };
+
+            window.html2pdf().set(opt).from(container).save().then(() => {
+                container.remove();
+            }).catch(err => {
+                console.error("PDF download failed, falling back to print dialog:", err);
+                container.remove();
+                triggerIframePrint(printHtml);
+            });
+        } else {
+            // Fallback to browser print dialog
+            triggerIframePrint(printHtml);
+        }
     }
 
     // Clean legacy blacklist to ensure deleted courses are never permanently hidden
@@ -2135,8 +2174,7 @@ document.addEventListener("DOMContentLoaded", () => {
                                     <div class="th-title-row">
                                         <span class="th-activity-title">${escapeHtml(act.name)}</span>
                                         ${isLocked
-                                            ? `<button type="button" class="col-print-btn" data-act-num="${act.num}" title="Print scores for ${escapeHtml(act.name)} (PDF)"><i class="fa-solid fa-print"></i></button>
-                                               <span class="th-locked-badge" title="Scores are saved and locked"><i class="fa-solid fa-lock"></i></span>`
+                                            ? `<span class="th-locked-badge" title="Scores are saved and locked"><i class="fa-solid fa-lock"></i></span>`
                                             : `<button type="button" class="th-delete-btn" data-act-num="${act.num}" title="Delete ${escapeHtml(act.name)}">
                                                    <i class="fa-solid fa-trash-can"></i>
                                                </button>`
@@ -2618,7 +2656,6 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         if (printActivityBtn) printActivityBtn.addEventListener("click", openPrintActivityModal);
-        if (printScoresFooterBtn) printScoresFooterBtn.addEventListener("click", openPrintActivityModal);
         if (closePrintActivityModalBtn) closePrintActivityModalBtn.addEventListener("click", closePrintActivityModal);
         if (cancelPrintActivityModalBtn) cancelPrintActivityModalBtn.addEventListener("click", closePrintActivityModal);
         if (printActivityModalOverlay) {
@@ -2634,16 +2671,6 @@ document.addEventListener("DOMContentLoaded", () => {
                     printSingleActivity(chosen);
                     closePrintActivityModal();
                 }
-            });
-        }
-
-        // Column header 1-click print listener
-        if (activityTableHead) {
-            activityTableHead.addEventListener("click", (e) => {
-                const btn = e.target.closest(".col-print-btn");
-                if (!btn) return;
-                const aNum = btn.getAttribute("data-act-num");
-                if (aNum) printSingleActivity(aNum);
             });
         }
     }
@@ -2773,8 +2800,7 @@ document.addEventListener("DOMContentLoaded", () => {
                                     <div class="th-title-row">
                                         <span class="th-activity-title">${escapeHtml(q.name)}</span>
                                         ${isLocked
-                                            ? `<button type="button" class="col-print-btn" data-quiz-num="${q.num}" title="Print scores for ${escapeHtml(q.name)} (PDF)"><i class="fa-solid fa-print"></i></button>
-                                               <span class="th-locked-badge" title="Scores are saved and locked"><i class="fa-solid fa-lock"></i></span>`
+                                            ? `<span class="th-locked-badge" title="Scores are saved and locked"><i class="fa-solid fa-lock"></i></span>`
                                             : `<button type="button" class="th-delete-btn" data-quiz-num="${q.num}" title="Delete ${escapeHtml(q.name)}">
                                                    <i class="fa-solid fa-trash-can"></i>
                                                </button>`
@@ -3249,7 +3275,6 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         if (printQuizBtn) printQuizBtn.addEventListener("click", openPrintQuizModal);
-        if (printQuizFooterBtn) printQuizFooterBtn.addEventListener("click", openPrintQuizModal);
         if (closePrintQuizModalBtn) closePrintQuizModalBtn.addEventListener("click", closePrintQuizModal);
         if (cancelPrintQuizModalBtn) cancelPrintQuizModalBtn.addEventListener("click", closePrintQuizModal);
         if (printQuizModalOverlay) {
@@ -3265,16 +3290,6 @@ document.addEventListener("DOMContentLoaded", () => {
                     printSingleQuiz(chosen);
                     closePrintQuizModal();
                 }
-            });
-        }
-
-        // Column header 1-click print listener
-        if (quizTableHead) {
-            quizTableHead.addEventListener("click", (e) => {
-                const btn = e.target.closest(".col-print-btn");
-                if (!btn) return;
-                const qNum = btn.getAttribute("data-quiz-num");
-                if (qNum) printSingleQuiz(qNum);
             });
         }
     }
@@ -3404,8 +3419,7 @@ document.addEventListener("DOMContentLoaded", () => {
                                     <div class="th-title-row">
                                         <span class="th-activity-title">${escapeHtml(ex.name)}</span>
                                         ${isLocked
-                                            ? `<button type="button" class="col-print-btn" data-exam-num="${ex.num}" title="Print scores for ${escapeHtml(ex.name)} (PDF)"><i class="fa-solid fa-print"></i></button>
-                                               <span class="th-locked-badge" title="Scores are saved and locked"><i class="fa-solid fa-lock"></i></span>`
+                                            ? `<span class="th-locked-badge" title="Scores are saved and locked"><i class="fa-solid fa-lock"></i></span>`
                                             : `<button type="button" class="th-delete-btn" data-exam-num="${ex.num}" title="Delete ${escapeHtml(ex.name)}">
                                                    <i class="fa-solid fa-trash-can"></i>
                                                </button>`
@@ -3880,7 +3894,6 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         if (printExamBtn) printExamBtn.addEventListener("click", openPrintExamModal);
-        if (printExamFooterBtn) printExamFooterBtn.addEventListener("click", openPrintExamModal);
         if (closePrintExamModalBtn) closePrintExamModalBtn.addEventListener("click", closePrintExamModal);
         if (cancelPrintExamModalBtn) cancelPrintExamModalBtn.addEventListener("click", closePrintExamModal);
         if (printExamModalOverlay) {
@@ -3896,16 +3909,6 @@ document.addEventListener("DOMContentLoaded", () => {
                     printSingleExam(chosen);
                     closePrintExamModal();
                 }
-            });
-        }
-
-        // Column header 1-click print listener
-        if (examTableHead) {
-            examTableHead.addEventListener("click", (e) => {
-                const btn = e.target.closest(".col-print-btn");
-                if (!btn) return;
-                const exNum = btn.getAttribute("data-exam-num");
-                if (exNum) printSingleExam(exNum);
             });
         }
     }
@@ -4042,14 +4045,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
             // Update print button state: print is only allowed once saved
             const printAttendanceBtn = document.getElementById("printAttendanceBtn");
-            const printAttendanceBottomBtn = document.getElementById("printAttendanceBottomBtn");
             if (printAttendanceBtn) {
                 printAttendanceBtn.disabled = !hasRecord;
-                printAttendanceBtn.title = hasRecord ? "Print attendance report (PDF)" : "Attendance for this date must be saved before printing";
-            }
-            if (printAttendanceBottomBtn) {
-                printAttendanceBottomBtn.disabled = !hasRecord;
-                printAttendanceBottomBtn.title = hasRecord ? "Print attendance report (PDF)" : "Attendance for this date must be saved before printing";
+                printAttendanceBtn.title = hasRecord ? "Download attendance report (PDF)" : "Attendance for this date must be saved before printing";
             }
 
             // Render students
@@ -4225,9 +4223,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         const printAttendanceBtn = document.getElementById("printAttendanceBtn");
-        const printAttendanceBottomBtn = document.getElementById("printAttendanceBottomBtn");
         if (printAttendanceBtn) printAttendanceBtn.addEventListener("click", doPrintAttendance);
-        if (printAttendanceBottomBtn) printAttendanceBottomBtn.addEventListener("click", doPrintAttendance);
 
         // Save Attendance button handler
         if (saveAttendanceBtn) {
