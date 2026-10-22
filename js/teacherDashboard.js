@@ -29,6 +29,372 @@ document.addEventListener("DOMContentLoaded", () => {
         localStorage.setItem("tracked_teacher_courses", JSON.stringify(courses));
     }
 
+    // Shared Date & HTML helpers
+    function getTodayLocalDate() {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, "0");
+        const day = String(now.getDate()).padStart(2, "0");
+        return `${year}-${month}-${day}`;
+    }
+
+    function formatDisplayDate(dateStr) {
+        if (!dateStr) return "";
+        try {
+            const parts = String(dateStr).trim().split("-");
+            if (parts.length === 3) {
+                const y = parseInt(parts[0], 10);
+                const m = parseInt(parts[1], 10) - 1;
+                const d = parseInt(parts[2], 10);
+                const dateObj = new Date(y, m, d);
+                return dateObj.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+            }
+        } catch (e) {}
+        return dateStr;
+    }
+
+    function getCourseCreationDate(cName) {
+        if (!cName) return getTodayLocalDate();
+        const cleanName = cName.trim();
+        // 1. Check scoped local key
+        let d = localStorage.getItem(`tracked_course_created_${currentTidKey}_${cleanName}`) ||
+                localStorage.getItem(`tracked_course_created_${cleanName}`);
+        if (d && /^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
+
+        // 2. Check courses array
+        const courses = getTeacherCourses();
+        const c = courses.find(item => item.name && item.name.trim().toLowerCase() === cleanName.toLowerCase());
+        if (c && (c.createdAt || c.created_at)) {
+            const str = String(c.createdAt || c.created_at).substring(0, 10);
+            if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+                localStorage.setItem(`tracked_course_created_${currentTidKey}_${cleanName}`, str);
+                return str;
+            }
+        }
+
+        // 3. Check earliest attendance record if any exists
+        let attRaw = localStorage.getItem(`tracked_course_attendance_${currentTidKey}_${cleanName}`) ||
+                     localStorage.getItem(`tracked_course_attendance_${cleanName}`);
+        if (attRaw) {
+            try {
+                const attObj = JSON.parse(attRaw) || {};
+                const validDates = Object.keys(attObj).filter(k => /^\d{4}-\d{2}-\d{2}$/.test(k)).sort();
+                if (validDates.length > 0) {
+                    const earliest = validDates[0];
+                    localStorage.setItem(`tracked_course_created_${currentTidKey}_${cleanName}`, earliest);
+                    return earliest;
+                }
+            } catch (e) {}
+        }
+
+        // 4. Fallback to today and lock it in
+        const todayStr = getTodayLocalDate();
+        localStorage.setItem(`tracked_course_created_${currentTidKey}_${cleanName}`, todayStr);
+        if (c) {
+            c.createdAt = todayStr;
+            saveTeacherCourses(courses);
+        }
+        return todayStr;
+    }
+
+    // Shared PDF / Printable Academic Report Generator
+    function printAcademicReport({
+        reportTitle,
+        assessmentName,
+        dateStr,
+        courseCode,
+        courseName,
+        instructorName,
+        headers,
+        rows,
+        summary
+    }) {
+        const displayDate = formatDisplayDate(dateStr) || dateStr || getTodayLocalDate();
+        const fullCourse = `${courseCode ? escapeHtml(courseCode) + " - " : ""}${escapeHtml(courseName || "Course")}`;
+        const teacherNameText = escapeHtml(instructorName || currentTeacherName || "Faculty Instructor");
+
+        const thCells = headers.map(h => `<th>${escapeHtml(h)}</th>`).join("");
+        const trRows = rows.map(r => {
+            return `<tr>${r.map((cell, idx) => {
+                // If cell is raw HTML (contains <span), render directly; else escape
+                const isHtml = typeof cell === "string" && cell.includes("<span");
+                const alignClass = idx === 0 ? " class='text-center'" : "";
+                return `<td${alignClass}>${isHtml ? cell : escapeHtml(cell)}</td>`;
+            }).join("")}</tr>`;
+        }).join("");
+
+        const printHtml = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>${escapeHtml(reportTitle)} - ${fullCourse}</title>
+<style>
+  @page {
+    size: letter portrait;
+    margin: 15mm 15mm 15mm 15mm;
+  }
+  * {
+    box-sizing: border-box;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: #0f172a;
+  }
+  body {
+    margin: 0;
+    padding: 24px;
+    background: #ffffff;
+    font-size: 13px;
+    line-height: 1.4;
+  }
+  .report-header {
+    text-align: center;
+    border-bottom: 2px solid #1e3a8a;
+    padding-bottom: 12px;
+    margin-bottom: 16px;
+  }
+  .report-header .inst-title {
+    font-size: 18px;
+    font-weight: 800;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: #1e3a8a;
+    margin: 0;
+  }
+  .report-header .sub-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #475569;
+    margin: 3px 0 0;
+  }
+  .report-header .doc-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 6px 0 0;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .report-meta-box {
+    margin-bottom: 16px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 12px 16px;
+    background: #f8fafc;
+  }
+  .meta-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .meta-row:last-child {
+    margin-bottom: 0;
+  }
+  .meta-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+  }
+  .meta-label {
+    font-weight: 700;
+    color: #334155;
+    text-transform: uppercase;
+    font-size: 11px;
+    letter-spacing: 0.5px;
+  }
+  .meta-val {
+    font-weight: 600;
+    color: #0f172a;
+  }
+  .meta-line {
+    display: inline-block;
+    border-bottom: 1.5px solid #334155;
+    min-width: 170px;
+    height: 14px;
+  }
+  table.report-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 8px;
+    margin-bottom: 16px;
+  }
+  table.report-table th, table.report-table td {
+    border: 1px solid #94a3b8;
+    padding: 7px 10px;
+    font-size: 12px;
+    text-align: left;
+  }
+  table.report-table th {
+    background: #1e3a8a;
+    color: #ffffff;
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 11px;
+    letter-spacing: 0.5px;
+  }
+  table.report-table tr:nth-child(even) td {
+    background: #f8fafc;
+  }
+  .text-center {
+    text-align: center;
+  }
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+  .badge-present { background: #dcfce7; color: #15803d; }
+  .badge-late    { background: #fef3c7; color: #b45309; }
+  .badge-absent  { background: #fee2e2; color: #dc2626; }
+  .badge-dropped { background: #f1f5f9; color: #64748b; }
+  .badge-score   { font-weight: 700; color: #1e3a8a; }
+  .summary-bar {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    font-weight: 600;
+    color: #334155;
+    padding: 8px 12px;
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+    margin-bottom: 30px;
+  }
+  .signature-block {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 40px;
+    page-break-inside: avoid;
+  }
+  .signature-box {
+    width: 250px;
+    text-align: center;
+  }
+  .sig-line {
+    border-bottom: 1.5px solid #0f172a;
+    margin-bottom: 6px;
+    height: 40px;
+  }
+  .sig-name {
+    font-weight: 700;
+    font-size: 13px;
+  }
+  .sig-role {
+    font-size: 11px;
+    color: #64748b;
+  }
+  @media print {
+    body { padding: 0; }
+  }
+</style>
+</head>
+<body>
+  <div class="report-header">
+    <h1 class="inst-title">TrackED Academic Portal</h1>
+    <div class="sub-title">College of Engineering &amp; Technology • Official Academic Record</div>
+    <div class="doc-title">${escapeHtml(reportTitle)}</div>
+  </div>
+
+  <div class="report-meta-box">
+    <div class="meta-row">
+      <div class="meta-item">
+        <span class="meta-label">Date:</span>
+        <span class="meta-val">${displayDate}</span>
+      </div>
+      ${assessmentName ? `
+      <div class="meta-item">
+        <span class="meta-label">Assessment:</span>
+        <span class="meta-val">${escapeHtml(assessmentName)}</span>
+      </div>` : `
+      <div class="meta-item">
+        <span class="meta-label">Course:</span>
+        <span class="meta-val">${fullCourse}</span>
+      </div>`}
+    </div>
+
+    <div class="meta-row">
+      <div class="meta-item">
+        <span class="meta-label">Instructor Name:</span>
+        <span class="meta-val">${teacherNameText}</span>
+      </div>
+      ${assessmentName ? `
+      <div class="meta-item">
+        <span class="meta-label">Course:</span>
+        <span class="meta-val">${fullCourse}</span>
+      </div>` : `
+      <div class="meta-item">
+        <span class="meta-label">Record Type:</span>
+        <span class="meta-val">Daily Class Attendance</span>
+      </div>`}
+    </div>
+
+    <div class="meta-row">
+      <div class="meta-item">
+        <span class="meta-label">Program:</span>
+        <span class="meta-line"></span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Year Level:</span>
+        <span class="meta-line"></span>
+      </div>
+    </div>
+  </div>
+
+  <table class="report-table">
+    <thead>
+      <tr>${thCells}</tr>
+    </thead>
+    <tbody>
+      ${trRows}
+    </tbody>
+  </table>
+
+  <div class="summary-bar">
+    <span>${escapeHtml(summary || "")}</span>
+    <span>Printed On: ${new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
+  </div>
+
+  <div class="signature-block">
+    <div class="signature-box">
+      <div class="sig-line"></div>
+      <div class="sig-name">${teacherNameText}</div>
+      <div class="sig-role">Instructor Signature over Printed Name</div>
+    </div>
+    <div class="signature-box">
+      <div class="sig-line"></div>
+      <div class="sig-name">Department Head / Dean</div>
+      <div class="sig-role">Dean of Engineering &amp; Technology</div>
+    </div>
+  </div>
+</body>
+</html>`;
+
+        let printFrame = document.getElementById("tracked_print_frame");
+        if (!printFrame) {
+            printFrame = document.createElement("iframe");
+            printFrame.id = "tracked_print_frame";
+            printFrame.style.position = "fixed";
+            printFrame.style.right = "0";
+            printFrame.style.bottom = "0";
+            printFrame.style.width = "0";
+            printFrame.style.height = "0";
+            printFrame.style.border = "0";
+            printFrame.style.visibility = "hidden";
+            document.body.appendChild(printFrame);
+        }
+        const doc = printFrame.contentWindow.document;
+        doc.open();
+        doc.write(printHtml);
+        doc.close();
+        setTimeout(() => {
+            printFrame.contentWindow.focus();
+            printFrame.contentWindow.print();
+        }, 400);
+    }
+
     // Clean legacy blacklist to ensure deleted courses are never permanently hidden
     localStorage.removeItem("tracked_deleted_courses");
 
@@ -901,6 +1267,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 migrateKey(`tracked_course_exams_locked_${currentTidKey}_${oldName}`, `tracked_course_exams_locked_${currentTidKey}_${newName}`);
                 migrateKey(`tracked_exam_scores_${oldName}`, `tracked_exam_scores_${newName}`);
                 migrateKey(`tracked_course_attendance_${oldName}`, `tracked_course_attendance_${newName}`);
+                migrateKey(`tracked_course_created_${currentTidKey}_${oldName}`, `tracked_course_created_${currentTidKey}_${newName}`);
+                migrateKey(`tracked_course_created_${oldName}`, `tracked_course_created_${newName}`);
 
                 // Student sync keys
                 migrateKey(`tracked_activity_${oldName.trim().toLowerCase()}`, `tracked_activity_${newName.trim().toLowerCase()}`);
@@ -1040,6 +1408,8 @@ document.addEventListener("DOMContentLoaded", () => {
             localStorage.removeItem(`tracked_course_exams_locked_${currentTidKey}_${courseToDeleteName}`);
             localStorage.removeItem(`tracked_exam_scores_${currentTidKey}_${courseToDeleteName}`);
             localStorage.removeItem(`tracked_course_attendance_${currentTidKey}_${courseToDeleteName}`);
+            localStorage.removeItem(`tracked_course_created_${currentTidKey}_${courseToDeleteName}`);
+            localStorage.removeItem(`tracked_course_created_${courseToDeleteName}`);
 
             // Remove this deleted course from ALL student-scoped cached course lists
             Object.keys(localStorage).forEach(key => {
@@ -1210,12 +1580,17 @@ document.addEventListener("DOMContentLoaded", () => {
 
             if (courseErrorAlert) courseErrorAlert.style.display = "none";
 
-            const newCourse = { code: courseCode, name: courseName };
+            const todayCourseDate = getTodayLocalDate();
+            const newCourse = { code: courseCode, name: courseName, createdAt: todayCourseDate };
 
             // Save to localStorage scoped to this teacher
             const courses = getTeacherCourses();
             courses.push(newCourse);
             saveTeacherCourses(courses);
+
+            // Record creation date persistently
+            localStorage.setItem(`tracked_course_created_${currentTidKey}_${courseName}`, todayCourseDate);
+            localStorage.setItem(`tracked_course_created_${courseName}`, todayCourseDate);
 
             // Sync to Supabase Cloud if connected
             if (window.TrackED_DB && typeof window.TrackED_DB.addCourse === "function") {
@@ -1760,7 +2135,8 @@ document.addEventListener("DOMContentLoaded", () => {
                                     <div class="th-title-row">
                                         <span class="th-activity-title">${escapeHtml(act.name)}</span>
                                         ${isLocked
-                                            ? `<span class="th-locked-badge" title="Scores are saved and locked"><i class="fa-solid fa-lock"></i></span>`
+                                            ? `<button type="button" class="col-print-btn" data-act-num="${act.num}" title="Print scores for ${escapeHtml(act.name)} (PDF)"><i class="fa-solid fa-print"></i></button>
+                                               <span class="th-locked-badge" title="Scores are saved and locked"><i class="fa-solid fa-lock"></i></span>`
                                             : `<button type="button" class="th-delete-btn" data-act-num="${act.num}" title="Delete ${escapeHtml(act.name)}">
                                                    <i class="fa-solid fa-trash-can"></i>
                                                </button>`
@@ -2148,6 +2524,128 @@ document.addEventListener("DOMContentLoaded", () => {
                 }, 4000);
             });
         }
+
+        // =========================================
+        // Activity Print Handlers (PDF Generation)
+        // =========================================
+        const printActivityBtn            = document.getElementById("printActivityBtn");
+        const printScoresFooterBtn        = document.getElementById("printScoresFooterBtn");
+        const printActivityModalOverlay   = document.getElementById("printActivityModalOverlay");
+        const closePrintActivityModalBtn  = document.getElementById("closePrintActivityModalBtn");
+        const cancelPrintActivityModalBtn = document.getElementById("cancelPrintActivityModalBtn");
+        const printActivityForm           = document.getElementById("printActivityForm");
+        const printActivitySelect         = document.getElementById("printActivitySelect");
+
+        function printSingleActivity(actNum) {
+            const act = currentActivities.find(a => parseInt(a.num, 10) === parseInt(actNum, 10));
+            if (!act) return;
+            const enrolledStudents = getEnrolledStudentsForCourse(currentActiveCourse);
+            const sorted = [...enrolledStudents].sort((a, b) => studentSortKey(a).localeCompare(studentSortKey(b)));
+
+            let totalRecorded = 0;
+            let totalScoreSum = 0;
+            let droppedCount = 0;
+
+            const rows = sorted.map((st, idx) => {
+                const stDropped = isStudentDropped(st);
+                let scoreDisplay = "";
+                let remarksBadge = "";
+                if (stDropped) {
+                    droppedCount++;
+                    scoreDisplay = `<span style="color: #94a3b8;">-</span>`;
+                    remarksBadge = `<span class="badge badge-dropped">Dropped</span>`;
+                } else {
+                    const stScores = currentScores[st.id] || {};
+                    const val = stScores[act.num];
+                    if (val !== undefined && val !== null && val !== "") {
+                        totalRecorded++;
+                        totalScoreSum += Number(val);
+                        scoreDisplay = `<span class="badge-score">${val} / ${act.maxScore}</span>`;
+                        remarksBadge = Number(val) >= (act.maxScore * 0.75) 
+                            ? `<span class="badge badge-present">Passed</span>` 
+                            : `<span class="badge badge-absent">Needs Improvement</span>`;
+                    } else {
+                        scoreDisplay = `0 / ${act.maxScore}`;
+                        remarksBadge = `<span class="badge badge-absent">No Submission</span>`;
+                    }
+                }
+                return [
+                    idx + 1,
+                    escapeHtml(st.id),
+                    escapeHtml(formatStudentName(st)),
+                    scoreDisplay,
+                    remarksBadge
+                ];
+            });
+
+            const avgScore = totalRecorded > 0 ? (totalScoreSum / totalRecorded).toFixed(1) : "0";
+            const summary = `Total Enrolled: ${sorted.length} | Recorded: ${totalRecorded} | Dropped: ${droppedCount} | Class Average: ${avgScore} / ${act.maxScore}`;
+
+            printAcademicReport({
+                reportTitle: "Student Activity Scores Record",
+                assessmentName: `${act.name} (Max Score: ${act.maxScore} pts)`,
+                dateStr: getTodayLocalDate(),
+                courseCode: currentActiveCourseCode || localStorage.getItem("tracked_selected_course_code") || "",
+                courseName: currentActiveCourse,
+                instructorName: currentTeacherName,
+                headers: ["#", "Student ID", "Student Name", "Score", "Remarks"],
+                rows: rows,
+                summary: summary
+            });
+        }
+
+        function openPrintActivityModal() {
+            const lockedActs = getLockedActivities();
+            const savedList = currentActivities.filter(a => lockedActs.includes(parseInt(a.num, 10)));
+            if (savedList.length === 0) {
+                alert("No saved activities found for this course. Please save scores first before printing.");
+                return;
+            }
+            if (printActivitySelect) {
+                printActivitySelect.innerHTML = savedList.map(a => 
+                    `<option value="${a.num}">${escapeHtml(a.name)} (Max: ${a.maxScore} pts)</option>`
+                ).join("");
+            }
+            if (printActivityModalOverlay) {
+                printActivityModalOverlay.classList.add("show");
+            }
+        }
+
+        function closePrintActivityModal() {
+            if (printActivityModalOverlay) {
+                printActivityModalOverlay.classList.remove("show");
+            }
+        }
+
+        if (printActivityBtn) printActivityBtn.addEventListener("click", openPrintActivityModal);
+        if (printScoresFooterBtn) printScoresFooterBtn.addEventListener("click", openPrintActivityModal);
+        if (closePrintActivityModalBtn) closePrintActivityModalBtn.addEventListener("click", closePrintActivityModal);
+        if (cancelPrintActivityModalBtn) cancelPrintActivityModalBtn.addEventListener("click", closePrintActivityModal);
+        if (printActivityModalOverlay) {
+            printActivityModalOverlay.addEventListener("click", (e) => {
+                if (e.target === printActivityModalOverlay) closePrintActivityModal();
+            });
+        }
+        if (printActivityForm) {
+            printActivityForm.addEventListener("submit", (e) => {
+                e.preventDefault();
+                const chosen = printActivitySelect ? printActivitySelect.value : null;
+                if (chosen) {
+                    printSingleActivity(chosen);
+                    closePrintActivityModal();
+                }
+            });
+        }
+
+        // Column header 1-click print listener
+        if (activityTableHead) {
+            activityTableHead.addEventListener("click", (e) => {
+                const btn = e.target.closest(".col-print-btn");
+                if (!btn) return;
+                const aNum = btn.getAttribute("data-act-num");
+                if (aNum) printSingleActivity(aNum);
+            });
+        }
     }
 
     // =========================================
@@ -2275,7 +2773,8 @@ document.addEventListener("DOMContentLoaded", () => {
                                     <div class="th-title-row">
                                         <span class="th-activity-title">${escapeHtml(q.name)}</span>
                                         ${isLocked
-                                            ? `<span class="th-locked-badge" title="Scores are saved and locked"><i class="fa-solid fa-lock"></i></span>`
+                                            ? `<button type="button" class="col-print-btn" data-quiz-num="${q.num}" title="Print scores for ${escapeHtml(q.name)} (PDF)"><i class="fa-solid fa-print"></i></button>
+                                               <span class="th-locked-badge" title="Scores are saved and locked"><i class="fa-solid fa-lock"></i></span>`
                                             : `<button type="button" class="th-delete-btn" data-quiz-num="${q.num}" title="Delete ${escapeHtml(q.name)}">
                                                    <i class="fa-solid fa-trash-can"></i>
                                                </button>`
@@ -2656,6 +3155,128 @@ document.addEventListener("DOMContentLoaded", () => {
                 }, 4000);
             });
         }
+
+        // =========================================
+        // Quiz Print Handlers (PDF Generation)
+        // =========================================
+        const printQuizBtn            = document.getElementById("printQuizBtn");
+        const printQuizFooterBtn      = document.getElementById("printQuizFooterBtn");
+        const printQuizModalOverlay   = document.getElementById("printQuizModalOverlay");
+        const closePrintQuizModalBtn  = document.getElementById("closePrintQuizModalBtn");
+        const cancelPrintQuizModalBtn = document.getElementById("cancelPrintQuizModalBtn");
+        const printQuizForm           = document.getElementById("printQuizForm");
+        const printQuizSelect         = document.getElementById("printQuizSelect");
+
+        function printSingleQuiz(quizNum) {
+            const quiz = currentQuizzes.find(q => parseInt(q.num, 10) === parseInt(quizNum, 10));
+            if (!quiz) return;
+            const enrolledStudents = getEnrolledStudentsForCourse(currentActiveCourse);
+            const sorted = [...enrolledStudents].sort((a, b) => studentSortKey(a).localeCompare(studentSortKey(b)));
+
+            let totalRecorded = 0;
+            let totalScoreSum = 0;
+            let droppedCount = 0;
+
+            const rows = sorted.map((st, idx) => {
+                const stDropped = isStudentDropped(st);
+                let scoreDisplay = "";
+                let remarksBadge = "";
+                if (stDropped) {
+                    droppedCount++;
+                    scoreDisplay = `<span style="color: #94a3b8;">-</span>`;
+                    remarksBadge = `<span class="badge badge-dropped">Dropped</span>`;
+                } else {
+                    const stScores = currentScores[st.id] || {};
+                    const val = stScores[quiz.num];
+                    if (val !== undefined && val !== null && val !== "") {
+                        totalRecorded++;
+                        totalScoreSum += Number(val);
+                        scoreDisplay = `<span class="badge-score">${val} / ${quiz.maxScore}</span>`;
+                        remarksBadge = Number(val) >= (quiz.maxScore * 0.75) 
+                            ? `<span class="badge badge-present">Passed</span>` 
+                            : `<span class="badge badge-absent">Needs Improvement</span>`;
+                    } else {
+                        scoreDisplay = `0 / ${quiz.maxScore}`;
+                        remarksBadge = `<span class="badge badge-absent">No Submission</span>`;
+                    }
+                }
+                return [
+                    idx + 1,
+                    escapeHtml(st.id),
+                    escapeHtml(formatStudentName(st)),
+                    scoreDisplay,
+                    remarksBadge
+                ];
+            });
+
+            const avgScore = totalRecorded > 0 ? (totalScoreSum / totalRecorded).toFixed(1) : "0";
+            const summary = `Total Enrolled: ${sorted.length} | Recorded: ${totalRecorded} | Dropped: ${droppedCount} | Class Average: ${avgScore} / ${quiz.maxScore}`;
+
+            printAcademicReport({
+                reportTitle: "Student Quiz Scores Record",
+                assessmentName: `${quiz.name} (Max Score: ${quiz.maxScore} pts)`,
+                dateStr: getTodayLocalDate(),
+                courseCode: currentActiveCourseCode || localStorage.getItem("tracked_selected_course_code") || "",
+                courseName: currentActiveCourse,
+                instructorName: currentTeacherName,
+                headers: ["#", "Student ID", "Student Name", "Score", "Remarks"],
+                rows: rows,
+                summary: summary
+            });
+        }
+
+        function openPrintQuizModal() {
+            const lockedQs = getLockedQuizzes();
+            const savedList = currentQuizzes.filter(q => lockedQs.includes(parseInt(q.num, 10)));
+            if (savedList.length === 0) {
+                alert("No saved quizzes found for this course. Please save scores first before printing.");
+                return;
+            }
+            if (printQuizSelect) {
+                printQuizSelect.innerHTML = savedList.map(q => 
+                    `<option value="${q.num}">${escapeHtml(q.name)} (Max: ${q.maxScore} pts)</option>`
+                ).join("");
+            }
+            if (printQuizModalOverlay) {
+                printQuizModalOverlay.classList.add("show");
+            }
+        }
+
+        function closePrintQuizModal() {
+            if (printQuizModalOverlay) {
+                printQuizModalOverlay.classList.remove("show");
+            }
+        }
+
+        if (printQuizBtn) printQuizBtn.addEventListener("click", openPrintQuizModal);
+        if (printQuizFooterBtn) printQuizFooterBtn.addEventListener("click", openPrintQuizModal);
+        if (closePrintQuizModalBtn) closePrintQuizModalBtn.addEventListener("click", closePrintQuizModal);
+        if (cancelPrintQuizModalBtn) cancelPrintQuizModalBtn.addEventListener("click", closePrintQuizModal);
+        if (printQuizModalOverlay) {
+            printQuizModalOverlay.addEventListener("click", (e) => {
+                if (e.target === printQuizModalOverlay) closePrintQuizModal();
+            });
+        }
+        if (printQuizForm) {
+            printQuizForm.addEventListener("submit", (e) => {
+                e.preventDefault();
+                const chosen = printQuizSelect ? printQuizSelect.value : null;
+                if (chosen) {
+                    printSingleQuiz(chosen);
+                    closePrintQuizModal();
+                }
+            });
+        }
+
+        // Column header 1-click print listener
+        if (quizTableHead) {
+            quizTableHead.addEventListener("click", (e) => {
+                const btn = e.target.closest(".col-print-btn");
+                if (!btn) return;
+                const qNum = btn.getAttribute("data-quiz-num");
+                if (qNum) printSingleQuiz(qNum);
+            });
+        }
     }
 
     // =========================================
@@ -2783,7 +3404,8 @@ document.addEventListener("DOMContentLoaded", () => {
                                     <div class="th-title-row">
                                         <span class="th-activity-title">${escapeHtml(ex.name)}</span>
                                         ${isLocked
-                                            ? `<span class="th-locked-badge" title="Scores are saved and locked"><i class="fa-solid fa-lock"></i></span>`
+                                            ? `<button type="button" class="col-print-btn" data-exam-num="${ex.num}" title="Print scores for ${escapeHtml(ex.name)} (PDF)"><i class="fa-solid fa-print"></i></button>
+                                               <span class="th-locked-badge" title="Scores are saved and locked"><i class="fa-solid fa-lock"></i></span>`
                                             : `<button type="button" class="th-delete-btn" data-exam-num="${ex.num}" title="Delete ${escapeHtml(ex.name)}">
                                                    <i class="fa-solid fa-trash-can"></i>
                                                </button>`
@@ -3164,6 +3786,128 @@ document.addEventListener("DOMContentLoaded", () => {
                 }, 4000);
             });
         }
+
+        // =========================================
+        // Exam Print Handlers (PDF Generation)
+        // =========================================
+        const printExamBtn            = document.getElementById("printExamBtn");
+        const printExamFooterBtn      = document.getElementById("printExamFooterBtn");
+        const printExamModalOverlay   = document.getElementById("printExamModalOverlay");
+        const closePrintExamModalBtn  = document.getElementById("closePrintExamModalBtn");
+        const cancelPrintExamModalBtn = document.getElementById("cancelPrintExamModalBtn");
+        const printExamForm           = document.getElementById("printExamForm");
+        const printExamSelect         = document.getElementById("printExamSelect");
+
+        function printSingleExam(examNum) {
+            const exam = currentExams.find(ex => parseInt(ex.num, 10) === parseInt(examNum, 10));
+            if (!exam) return;
+            const enrolledStudents = getEnrolledStudentsForCourse(currentActiveCourse);
+            const sorted = [...enrolledStudents].sort((a, b) => studentSortKey(a).localeCompare(studentSortKey(b)));
+
+            let totalRecorded = 0;
+            let totalScoreSum = 0;
+            let droppedCount = 0;
+
+            const rows = sorted.map((st, idx) => {
+                const stDropped = isStudentDropped(st);
+                let scoreDisplay = "";
+                let remarksBadge = "";
+                if (stDropped) {
+                    droppedCount++;
+                    scoreDisplay = `<span style="color: #94a3b8;">-</span>`;
+                    remarksBadge = `<span class="badge badge-dropped">Dropped</span>`;
+                } else {
+                    const stScores = currentScores[st.id] || {};
+                    const val = stScores[exam.num];
+                    if (val !== undefined && val !== null && val !== "") {
+                        totalRecorded++;
+                        totalScoreSum += Number(val);
+                        scoreDisplay = `<span class="badge-score">${val} / ${exam.maxScore}</span>`;
+                        remarksBadge = Number(val) >= (exam.maxScore * 0.75) 
+                            ? `<span class="badge badge-present">Passed</span>` 
+                            : `<span class="badge badge-absent">Needs Improvement</span>`;
+                    } else {
+                        scoreDisplay = `0 / ${exam.maxScore}`;
+                        remarksBadge = `<span class="badge badge-absent">No Submission</span>`;
+                    }
+                }
+                return [
+                    idx + 1,
+                    escapeHtml(st.id),
+                    escapeHtml(formatStudentName(st)),
+                    scoreDisplay,
+                    remarksBadge
+                ];
+            });
+
+            const avgScore = totalRecorded > 0 ? (totalScoreSum / totalRecorded).toFixed(1) : "0";
+            const summary = `Total Enrolled: ${sorted.length} | Recorded: ${totalRecorded} | Dropped: ${droppedCount} | Class Average: ${avgScore} / ${exam.maxScore}`;
+
+            printAcademicReport({
+                reportTitle: "Student Exam Scores Record",
+                assessmentName: `${exam.name} (Max Score: ${exam.maxScore} pts)`,
+                dateStr: getTodayLocalDate(),
+                courseCode: currentActiveCourseCode || localStorage.getItem("tracked_selected_course_code") || "",
+                courseName: currentActiveCourse,
+                instructorName: currentTeacherName,
+                headers: ["#", "Student ID", "Student Name", "Score", "Remarks"],
+                rows: rows,
+                summary: summary
+            });
+        }
+
+        function openPrintExamModal() {
+            const lockedExs = getLockedExams();
+            const savedList = currentExams.filter(ex => lockedExs.includes(parseInt(ex.num, 10)));
+            if (savedList.length === 0) {
+                alert("No saved exams found for this course. Please save scores first before printing.");
+                return;
+            }
+            if (printExamSelect) {
+                printExamSelect.innerHTML = savedList.map(ex => 
+                    `<option value="${ex.num}">${escapeHtml(ex.name)} (Max: ${ex.maxScore} pts)</option>`
+                ).join("");
+            }
+            if (printExamModalOverlay) {
+                printExamModalOverlay.classList.add("show");
+            }
+        }
+
+        function closePrintExamModal() {
+            if (printExamModalOverlay) {
+                printExamModalOverlay.classList.remove("show");
+            }
+        }
+
+        if (printExamBtn) printExamBtn.addEventListener("click", openPrintExamModal);
+        if (printExamFooterBtn) printExamFooterBtn.addEventListener("click", openPrintExamModal);
+        if (closePrintExamModalBtn) closePrintExamModalBtn.addEventListener("click", closePrintExamModal);
+        if (cancelPrintExamModalBtn) cancelPrintExamModalBtn.addEventListener("click", closePrintExamModal);
+        if (printExamModalOverlay) {
+            printExamModalOverlay.addEventListener("click", (e) => {
+                if (e.target === printExamModalOverlay) closePrintExamModal();
+            });
+        }
+        if (printExamForm) {
+            printExamForm.addEventListener("submit", (e) => {
+                e.preventDefault();
+                const chosen = printExamSelect ? printExamSelect.value : null;
+                if (chosen) {
+                    printSingleExam(chosen);
+                    closePrintExamModal();
+                }
+            });
+        }
+
+        // Column header 1-click print listener
+        if (examTableHead) {
+            examTableHead.addEventListener("click", (e) => {
+                const btn = e.target.closest(".col-print-btn");
+                if (!btn) return;
+                const exNum = btn.getAttribute("data-exam-num");
+                if (exNum) printSingleExam(exNum);
+            });
+        }
     }
 
     // =========================================
@@ -3238,7 +3982,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // Render attendance table for a given date
         function loadAttendanceForDate(dateStr) {
+            const courseMinDate = getCourseCreationDate(currentActiveCourse);
             const todayStr = getTodayLocalDate();
+
+            // Clamp past date prior to course creation
+            if (dateStr && dateStr < courseMinDate) {
+                alert(`Cannot record attendance prior to the course creation date (${formatDisplayDate(courseMinDate)}). Setting date to ${formatDisplayDate(courseMinDate)}.`);
+                dateStr = courseMinDate;
+                attendanceDateInput.value = courseMinDate;
+            }
             // Clamp future date
             if (dateStr && dateStr > todayStr) {
                 alert("Cannot record attendance for future dates. Setting date to today.");
@@ -3288,6 +4040,18 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
             }
 
+            // Update print button state: print is only allowed once saved
+            const printAttendanceBtn = document.getElementById("printAttendanceBtn");
+            const printAttendanceBottomBtn = document.getElementById("printAttendanceBottomBtn");
+            if (printAttendanceBtn) {
+                printAttendanceBtn.disabled = !hasRecord;
+                printAttendanceBtn.title = hasRecord ? "Print attendance report (PDF)" : "Attendance for this date must be saved before printing";
+            }
+            if (printAttendanceBottomBtn) {
+                printAttendanceBottomBtn.disabled = !hasRecord;
+                printAttendanceBottomBtn.title = hasRecord ? "Print attendance report (PDF)" : "Attendance for this date must be saved before printing";
+            }
+
             // Render students
             attendanceTableBody.innerHTML = "";
             if (enrolledStudents.length === 0) {
@@ -3318,8 +4082,8 @@ document.addEventListener("DOMContentLoaded", () => {
                         </td>
                     `;
                 } else {
-                    // If hasRecord, use saved status; otherwise reset to "present"
-                    const currentStatus = (hasRecord && dayRecord[st.id]) ? dayRecord[st.id] : "present";
+                    // If hasRecord, use saved status; otherwise DEFAULT TO ABSENT as requested
+                    const currentStatus = (hasRecord && dayRecord[st.id]) ? dayRecord[st.id] : "absent";
                     const disabledAttr = hasRecord ? "disabled" : "";
 
                     tr.innerHTML = `
@@ -3327,9 +4091,9 @@ document.addEventListener("DOMContentLoaded", () => {
                         <td>${escapeHtml(formatStudentName(st))}</td>
                         <td>
                             <select class="attendance-select" data-student-id="${escapeHtml(st.id)}" ${disabledAttr}>
+                                <option value="absent" ${currentStatus === "absent" ? "selected" : ""}>Absent</option>
                                 <option value="present" ${currentStatus === "present" ? "selected" : ""}>Present</option>
                                 <option value="late" ${currentStatus === "late" ? "selected" : ""}>Late</option>
-                                <option value="absent" ${currentStatus === "absent" ? "selected" : ""}>Absent</option>
                             </select>
                         </td>
                     `;
@@ -3346,13 +4110,17 @@ document.addEventListener("DOMContentLoaded", () => {
             });
         }
 
-        // Set max date constraint to today (prevent future date selections)
+        // Set min and max date constraints (course creation date to today)
+        const courseMinDate = getCourseCreationDate(currentActiveCourse);
         const todayLocalStr = getTodayLocalDate();
+        attendanceDateInput.setAttribute("min", courseMinDate);
         attendanceDateInput.setAttribute("max", todayLocalStr);
 
-        // Default date selection: default to today (or clamp if somehow greater)
+        // Default date selection: default to today (or clamp if somehow greater or less)
         if (!attendanceDateInput.value || attendanceDateInput.value > todayLocalStr) {
             attendanceDateInput.value = todayLocalStr;
+        } else if (attendanceDateInput.value < courseMinDate) {
+            attendanceDateInput.value = courseMinDate;
         }
 
         // Load initial date
@@ -3361,15 +4129,19 @@ document.addEventListener("DOMContentLoaded", () => {
         // When teacher picks or navigates any date using the date selector:
         attendanceDateInput.addEventListener("change", () => {
             let chosenDate = attendanceDateInput.value;
-            const todayStr = getTodayLocalDate();
-            if (chosenDate && chosenDate > todayStr) {
+            if (!chosenDate) return;
+            const minD = getCourseCreationDate(currentActiveCourse);
+            const maxD = getTodayLocalDate();
+            if (chosenDate < minD) {
+                alert(`Cannot record attendance prior to the course creation date (${formatDisplayDate(minD)}). Setting date to ${formatDisplayDate(minD)}.`);
+                attendanceDateInput.value = minD;
+                chosenDate = minD;
+            } else if (chosenDate > maxD) {
                 alert("Cannot record attendance for future dates. Setting date to today.");
-                attendanceDateInput.value = todayStr;
-                chosenDate = todayStr;
+                attendanceDateInput.value = maxD;
+                chosenDate = maxD;
             }
-            if (chosenDate) {
-                loadAttendanceForDate(chosenDate);
-            }
+            loadAttendanceForDate(chosenDate);
         });
 
         // "Today" quick button
@@ -3390,6 +4162,73 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         });
 
+        // Print Attendance Action Handler
+        function doPrintAttendance() {
+            const dateKey = attendanceDateInput.value;
+            if (!dateKey) {
+                alert("Please select a date first.");
+                return;
+            }
+            if (!attendanceMap[dateKey]) {
+                alert("Please save attendance for this date before printing.");
+                return;
+            }
+            const dayRecord = attendanceMap[dateKey] || {};
+            const activeEnrolled = getEnrolledStudentsForCourse(currentActiveCourse);
+            const sorted = [...activeEnrolled].sort((a, b) => studentSortKey(a).localeCompare(studentSortKey(b)));
+
+            let presentCount = 0;
+            let lateCount = 0;
+            let absentCount = 0;
+            let droppedCount = 0;
+
+            const rows = sorted.map((st, idx) => {
+                const stDropped = isStudentDropped(st);
+                let statusBadge = "";
+                if (stDropped) {
+                    droppedCount++;
+                    statusBadge = `<span class="badge badge-dropped">Dropped</span>`;
+                } else {
+                    const stStatus = dayRecord[st.id] || "absent";
+                    if (stStatus === "present") {
+                        presentCount++;
+                        statusBadge = `<span class="badge badge-present">Present</span>`;
+                    } else if (stStatus === "late") {
+                        lateCount++;
+                        statusBadge = `<span class="badge badge-late">Late</span>`;
+                    } else {
+                        absentCount++;
+                        statusBadge = `<span class="badge badge-absent">Absent</span>`;
+                    }
+                }
+                return [
+                    idx + 1,
+                    escapeHtml(st.id),
+                    escapeHtml(formatStudentName(st)),
+                    statusBadge
+                ];
+            });
+
+            const summary = `Total Enrolled: ${sorted.length} | Present: ${presentCount} | Late: ${lateCount} | Absent: ${absentCount} | Dropped: ${droppedCount}`;
+
+            printAcademicReport({
+                reportTitle: "Student Attendance Record",
+                assessmentName: null,
+                dateStr: dateKey,
+                courseCode: currentActiveCourseCode || localStorage.getItem("tracked_selected_course_code") || "",
+                courseName: currentActiveCourse,
+                instructorName: currentTeacherName,
+                headers: ["#", "Student ID", "Student Name", "Attendance Status"],
+                rows: rows,
+                summary: summary
+            });
+        }
+
+        const printAttendanceBtn = document.getElementById("printAttendanceBtn");
+        const printAttendanceBottomBtn = document.getElementById("printAttendanceBottomBtn");
+        if (printAttendanceBtn) printAttendanceBtn.addEventListener("click", doPrintAttendance);
+        if (printAttendanceBottomBtn) printAttendanceBottomBtn.addEventListener("click", doPrintAttendance);
+
         // Save Attendance button handler
         if (saveAttendanceBtn) {
             saveAttendanceBtn.addEventListener("click", () => {
@@ -3399,7 +4238,12 @@ document.addEventListener("DOMContentLoaded", () => {
                     return;
                 }
 
+                const courseMinDate = getCourseCreationDate(currentActiveCourse);
                 const todayStr = getTodayLocalDate();
+                if (dateKey < courseMinDate) {
+                    alert(`Cannot record attendance prior to the course creation date (${formatDisplayDate(courseMinDate)}).`);
+                    return;
+                }
                 if (dateKey > todayStr) {
                     alert("Cannot record attendance for future dates.");
                     return;

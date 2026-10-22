@@ -86,6 +86,41 @@
         </div>
     </div>
 
+    <!-- PRINT ACTIVITY MODAL -->
+    <div class="modal-overlay" id="printActivityModalOverlay">
+        <div class="student-modal" id="printActivityModal" style="max-width: 440px;">
+            <button class="modal-close-btn" id="closePrintActivityModalBtn" title="Close">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+
+            <div class="modal-header">
+                <div class="modal-icon-badge" style="background: rgba(15, 118, 110, 0.12); color: #0f766e;">
+                    <i class="fa-solid fa-print"></i>
+                </div>
+                <h3>Print Activity Scores</h3>
+                <p>Select a saved activity to generate and print its official score sheet PDF.</p>
+            </div>
+
+            <form id="printActivityForm" class="modal-form">
+                <div class="form-group">
+                    <label for="printActivitySelect">
+                        <i class="fa-solid fa-list-check"></i> Choose Saved Activity
+                    </label>
+                    <select id="printActivitySelect" class="form-control" style="width: 100%; padding: 10px 12px; border: 1.5px solid #cbd5e1; border-radius: 8px; font-family: inherit; font-size: 14px;">
+                        <!-- Populated dynamically with saved activities only -->
+                    </select>
+                </div>
+
+                <div class="modal-actions" style="margin-top: 20px;">
+                    <button type="button" class="btn-cancel" id="cancelPrintActivityModalBtn">Cancel</button>
+                    <button type="submit" class="btn-save" id="doPrintActivityBtn" style="background: #0f766e;">
+                        <i class="fa-solid fa-print"></i> Print PDF
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <main class="page-main">
         <section class="activities-content">
             <!-- PAGE HEADER -->
@@ -124,9 +159,14 @@
                         <p>Enter the score for each student and activity.</p>
                     </div>
 
-                    <button class="add-activity-btn" id="addActivityBtn">
-                        <i class="fa-solid fa-plus"></i> Add Activity
-                    </button>
+                    <div class="card-header-actions" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                        <button class="print-btn" id="printActivityBtn" type="button" title="Print activity scores PDF">
+                            <i class="fa-solid fa-print"></i> Print Scores
+                        </button>
+                        <button class="add-activity-btn" id="addActivityBtn">
+                            <i class="fa-solid fa-plus"></i> Add Activity
+                        </button>
+                    </div>
                 </div>
 
                 <div class="table-container">
@@ -144,10 +184,13 @@
                     </table>
                 </div>
 
-                <!-- SAVE BUTTON -->
-                <div class="save-container">
+                <!-- SAVE & PRINT BUTTONS -->
+                <div class="save-container" style="display: flex; gap: 12px; justify-content: flex-end; align-items: center; flex-wrap: wrap;">
                     <button class="save-btn" id="saveScoresBtn">
                         <i class="fa-solid fa-floppy-disk"></i> Save Scores
+                    </button>
+                    <button class="print-btn" id="printScoresFooterBtn" type="button" title="Print activity scores PDF">
+                        <i class="fa-solid fa-print"></i> Print Scores (PDF)
                     </button>
                 </div>
             </div>

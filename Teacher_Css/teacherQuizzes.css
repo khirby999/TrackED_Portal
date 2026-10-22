@@ -795,6 +795,59 @@ tbody tr:hover td {
     opacity: 0.85;
 }
 
+.print-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 18px;
+    background: #0f766e;
+    color: #ffffff;
+    border: none;
+    border-radius: 10px;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(15, 118, 110, 0.22);
+    transition: all 0.2s ease;
+}
+
+.print-btn:hover:not(:disabled) {
+    background: #0d9488;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(15, 118, 110, 0.32);
+}
+
+.print-btn:disabled {
+    background: #cbd5e1 !important;
+    color: #94a3b8 !important;
+    cursor: not-allowed !important;
+    box-shadow: none !important;
+    transform: none !important;
+    opacity: 0.8;
+}
+
+.col-print-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    color: #15803d;
+    cursor: pointer;
+    font-size: 11px;
+    padding: 3px 6px;
+    border-radius: 4px;
+    transition: all 0.15s ease;
+    margin-left: 6px;
+}
+
+.col-print-btn:hover {
+    background: #15803d;
+    color: #ffffff;
+    border-color: #15803d;
+}
+
 /* =========================================
    FOOTER
 ========================================= */

@@ -1646,7 +1646,8 @@ const SUPABASE_CONFIG = {
 
                     const mappedCourses = dbCourses.map(c => ({
                         code: c.course_code,
-                        name: c.course_name
+                        name: c.course_name,
+                        createdAt: c.created_at || c.createdAt || null
                     }));
                     // Save scoped to this teacher so other teachers on the same browser never inherit them
                     localStorage.setItem(`tracked_teacher_courses_${tidKey}`, JSON.stringify(mappedCourses));
