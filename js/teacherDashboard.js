@@ -97,51 +97,7 @@ document.addEventListener("DOMContentLoaded", () => {
         return todayStr;
     }
 
-    // Lightweight toast notification for PDF feedback
-    function showPdfToast(msg, type = "info") {
-        let toast = document.getElementById("tracked_pdf_toast");
-        if (!toast) {
-            toast = document.createElement("div");
-            toast.id = "tracked_pdf_toast";
-            toast.style.position = "fixed";
-            toast.style.top = "24px";
-            toast.style.right = "24px";
-            toast.style.zIndex = "999999";
-            toast.style.padding = "14px 22px";
-            toast.style.borderRadius = "10px";
-            toast.style.fontSize = "14px";
-            toast.style.fontWeight = "600";
-            toast.style.display = "flex";
-            toast.style.alignItems = "center";
-            toast.style.gap = "10px";
-            toast.style.boxShadow = "0 10px 30px rgba(0,0,0,0.25)";
-            toast.style.transition = "opacity 0.3s ease, transform 0.3s ease";
-            document.body.appendChild(toast);
-        }
-        const colors = {
-            info:    { bg: "#1e3a8a", text: "#ffffff", icon: '<i class="fa-solid fa-spinner fa-spin"></i>' },
-            success: { bg: "#059669", text: "#ffffff", icon: '<i class="fa-solid fa-circle-check"></i>' },
-            warning: { bg: "#d97706", text: "#ffffff", icon: '<i class="fa-solid fa-triangle-exclamation"></i>' },
-            error:   { bg: "#dc2626", text: "#ffffff", icon: '<i class="fa-solid fa-circle-xmark"></i>' }
-        };
-        const c = colors[type] || colors.info;
-        toast.style.backgroundColor = c.bg;
-        toast.style.color = c.text;
-        toast.innerHTML = `${c.icon} <span>${escapeHtml(msg)}</span>`;
-        toast.style.opacity = "1";
-        toast.style.transform = "translateY(0)";
-
-        if (type !== "info") {
-            setTimeout(() => {
-                if (toast) {
-                    toast.style.opacity = "0";
-                    toast.style.transform = "translateY(-10px)";
-                }
-            }, 4000);
-        }
-    }
-
-    // Shared PDF / Printable Academic Report Generator
+    // Shared PDF / Printable Academic Report Generator (Native Print & Save as PDF)
     function printAcademicReport({
         reportTitle,
         assessmentName,
@@ -169,15 +125,19 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const reportStyles = `
             * { box-sizing: border-box; }
-            .report-container {
-                width: 780px;
-                padding: 24px 28px;
+            body {
+                margin: 0;
+                padding: 24px;
                 background: #ffffff;
                 font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
                 color: #0f172a;
                 font-size: 13px;
                 line-height: 1.4;
-                box-sizing: border-box;
+            }
+            .report-container {
+                max-width: 820px;
+                margin: 0 auto;
+                background: #ffffff;
             }
             .report-header {
                 text-align: center;
@@ -320,6 +280,19 @@ document.addEventListener("DOMContentLoaded", () => {
                 font-size: 11px;
                 color: #64748b;
             }
+            @media print {
+                @page {
+                    size: letter portrait;
+                    margin: 10mm;
+                }
+                body {
+                    padding: 0;
+                    background: #ffffff;
+                }
+                .no-print {
+                    display: none !important;
+                }
+            }
         `;
 
         const reportContentInner = `
@@ -408,119 +381,45 @@ document.addEventListener("DOMContentLoaded", () => {
 <meta charset="UTF-8">
 <title>${escapeHtml(reportTitle)} - ${fullCourse}</title>
 <style>
-  @page { size: letter portrait; margin: 10mm; }
-  body { margin: 0; padding: 24px; background: #ffffff; }
   ${reportStyles}
-  @media print {
-    body { padding: 0; }
-    .no-print { display: none !important; }
-  }
 </style>
 </head>
 <body>
-  <div class="no-print" style="position: sticky; top: 0; background: #1e3a8a; color: #ffffff; padding: 12px 24px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1000; font-family: sans-serif; margin: -24px -24px 20px -24px;">
-    <div style="font-size: 14px; font-weight: 600;">
-      📄 TrackED Report • Choose "Save as PDF" in print destination to save file
+  <div class="no-print" style="position: sticky; top: 0; background: #1e3a8a; color: #ffffff; padding: 12px 24px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 14px rgba(0,0,0,0.2); z-index: 10000; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: -24px -24px 20px -24px;">
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <span style="font-size: 16px;">📄</span>
+      <span style="font-size: 14px; font-weight: 600;">TrackED Report Ready • In print destination, select <strong>"Save as PDF"</strong> to save file</span>
     </div>
     <div style="display: flex; gap: 10px;">
-      <button onclick="window.print()" style="background: #10b981; color: #ffffff; border: none; padding: 8px 18px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;">
+      <button onclick="window.print()" style="background: #10b981; color: #ffffff; border: none; padding: 9px 20px; border-radius: 6px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
         🖨️ Print / Save as PDF
       </button>
-      <button onclick="window.close()" style="background: #64748b; color: #ffffff; border: none; padding: 8px 14px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;">
+      <button onclick="window.close()" style="background: #64748b; color: #ffffff; border: none; padding: 9px 16px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;">
         ✕ Close
       </button>
     </div>
   </div>
-  <div class="report-container" style="max-width: 800px; margin: 0 auto;">
+  <div class="report-container">
     ${reportContentInner}
   </div>
 </body>
 </html>`;
 
-        function openPrintWindow(content) {
-            const printWin = window.open("", "_blank");
-            if (!printWin) {
-                alert("Pop-up blocked by browser. Please allow pop-ups for TrackED to download or print reports.");
-                return;
-            }
+        const printWin = window.open("", "_blank");
+        if (printWin) {
             printWin.document.open();
-            printWin.document.write(content);
+            printWin.document.write(fullPrintableHtml);
             printWin.document.close();
             printWin.focus();
             setTimeout(() => {
                 try {
                     printWin.print();
-                } catch (e) {
-                    console.warn("Auto-print preview trigger error:", e);
+                } catch(e) {
+                    console.warn("Print preview auto trigger:", e);
                 }
-            }, 500);
-        }
-
-        const cleanCourseCode = (courseCode || "Course").replace(/[^a-zA-Z0-9_-]/g, "_");
-        const cleanTitle = (reportTitle || "Report").replace(/[^a-zA-Z0-9_-]/g, "_");
-        const cleanDate = (displayDate || "").replace(/[^a-zA-Z0-9_-]/g, "_");
-        const downloadFilename = `TrackED_${cleanTitle}_${cleanCourseCode}_${cleanDate}.pdf`;
-
-        // Direct PDF download via html2pdf
-        if (typeof window.html2pdf === "function") {
-            const renderStage = document.createElement("div");
-            renderStage.id = "tracked_pdf_export_stage";
-            renderStage.style.position = "fixed";
-            renderStage.style.top = "0";
-            renderStage.style.left = "0";
-            renderStage.style.width = "780px";
-            renderStage.style.background = "#ffffff";
-            renderStage.style.zIndex = "-9999";
-            renderStage.style.opacity = "1";
-            renderStage.style.pointerEvents = "none";
-            renderStage.innerHTML = `<style>${reportStyles}</style><div class="report-container">${reportContentInner}</div>`;
-            document.body.appendChild(renderStage);
-
-            showPdfToast("Generating PDF... Download will start in a moment.", "info");
-
-            const opt = {
-                margin:       [8, 8, 8, 8],
-                filename:     downloadFilename,
-                image:        { type: "jpeg", quality: 0.98 },
-                html2canvas:  { 
-                    scale: 2, 
-                    useCORS: true, 
-                    logging: false,
-                    scrollY: 0,
-                    scrollX: 0
-                },
-                jsPDF:        { unit: "mm", format: "letter", orientation: "portrait" },
-                pagebreak:    { mode: ["avoid-all", "css", "legacy"] }
-            };
-
-            let finished = false;
-            const safetyTimeout = setTimeout(() => {
-                if (!finished) {
-                    finished = true;
-                    if (renderStage.parentNode) renderStage.remove();
-                    showPdfToast("Direct generation taking long. Opening print window...", "warning");
-                    openPrintWindow(fullPrintableHtml);
-                }
-            }, 8000);
-
-            window.html2pdf().set(opt).from(renderStage).save().then(() => {
-                if (finished) return;
-                finished = true;
-                clearTimeout(safetyTimeout);
-                if (renderStage.parentNode) renderStage.remove();
-                showPdfToast("PDF downloaded successfully! Check your Downloads folder.", "success");
-            }).catch(err => {
-                console.error("html2pdf generation error:", err);
-                if (finished) return;
-                finished = true;
-                clearTimeout(safetyTimeout);
-                if (renderStage.parentNode) renderStage.remove();
-                showPdfToast("Direct download failed. Opening printable view...", "warning");
-                openPrintWindow(fullPrintableHtml);
-            });
+            }, 300);
         } else {
-            showPdfToast("Opening print window...", "info");
-            openPrintWindow(fullPrintableHtml);
+            alert("Pop-up window was blocked by your browser. Please allow pop-ups for TrackED to print or save reports as PDF.");
         }
     }
 
@@ -2137,6 +2036,8 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     const currentActiveCourse = activeCourseName || "Programming Fundamentals";
+    const currentActiveCourseCode = localStorage.getItem("tracked_selected_course_code") ||
+                                    (getTeacherCourses().find(c => c.name === currentActiveCourse) || {}).code || "";
 
     // =========================================
     // 1. TEACHER ACTIVITIES MANAGEMENT
