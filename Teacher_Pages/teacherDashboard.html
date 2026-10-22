@@ -25,12 +25,6 @@
                 <i class="fa-solid fa-plus"></i>
                 <span>Add Student</span>
             </button>
-
-            <!-- Option beside add student to remove student -->
-            <button class="remove-student-header-btn" id="removeStudentBtn" title="Remove Student">
-                <i class="fa-solid fa-user-minus"></i>
-                <span>Remove Student</span>
-            </button>
         </div>
 
         <div class="right-menu">
@@ -208,68 +202,6 @@
                     <button type="button" class="btn-cancel" id="cancelStudentBtn">Cancel</button>
                     <button type="submit" class="btn-save" id="saveStudentBtn">
                         <i class="fa-solid fa-plus"></i> Add Student
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- REMOVE STUDENT POPUP WINDOW / MODAL -->
-    <div class="modal-overlay" id="removeStudentModalOverlay">
-        <div class="student-modal" id="removeStudentModal">
-            <button class="modal-close-btn" id="closeRemoveStudentModal" title="Close">
-                <i class="fa-solid fa-xmark"></i>
-            </button>
-
-            <div class="modal-header">
-                <div class="modal-icon-badge delete-badge">
-                    <i class="fa-solid fa-user-minus"></i>
-                </div>
-                <h3>Remove Student</h3>
-                <p>Enter the Student ID to look up the student and remove them from the database.</p>
-            </div>
-
-            <form id="removeStudentForm" class="modal-form">
-                <div class="form-group">
-                    <label for="removeStudentIdInput">
-                        <i class="fa-solid fa-id-card"></i> Student ID
-                    </label>
-                    <input 
-                        type="text" 
-                        id="removeStudentIdInput" 
-                        placeholder="Type Student ID (e.g. 2026-001)" 
-                        autocomplete="off" 
-                        required
-                    >
-                </div>
-
-                <!-- Real-time Student Found Preview Card -->
-                <div id="removeStudentFoundBox" class="student-found-card" style="display: none;">
-                    <div class="found-icon">
-                        <i class="fa-solid fa-user-check"></i>
-                    </div>
-                    <div class="found-details">
-                        <span class="found-tag">STUDENT FOUND</span>
-                        <h4 id="removeFoundName" class="found-name">-</h4>
-                        <p id="removeFoundProgram" class="found-program">-</p>
-                    </div>
-                </div>
-
-                <!-- Not Found Alert -->
-                <div id="removeStudentNotFound" class="student-not-found" style="display: none;">
-                    <i class="fa-solid fa-circle-xmark"></i>
-                    <span>No registered student found with this ID.</span>
-                </div>
-
-                <div class="modal-alert success" id="removeStudentSuccessAlert" style="display: none;">
-                    <i class="fa-solid fa-circle-check"></i>
-                    <span id="removeStudentSuccessMsg">Student removed successfully!</span>
-                </div>
-
-                <div class="modal-actions">
-                    <button type="button" class="btn-cancel" id="cancelRemoveStudentBtn">Cancel</button>
-                    <button type="submit" class="btn-danger" id="confirmRemoveStudentBtn" disabled>
-                        <i class="fa-solid fa-trash-can"></i> Remove Student
                     </button>
                 </div>
             </form>

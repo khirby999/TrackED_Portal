@@ -889,10 +889,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 migrateKey(`tracked_enrolled_${oldName}`, `tracked_enrolled_${newName}`);
                 migrateKey(`tracked_course_activities_${oldName}`, `tracked_course_activities_${newName}`);
+                migrateKey(`tracked_course_activities_locked_${oldName}`, `tracked_course_activities_locked_${newName}`);
+                migrateKey(`tracked_course_activities_locked_${currentTidKey}_${oldName}`, `tracked_course_activities_locked_${currentTidKey}_${newName}`);
                 migrateKey(`tracked_activity_scores_${oldName}`, `tracked_activity_scores_${newName}`);
                 migrateKey(`tracked_course_quizzes_${oldName}`, `tracked_course_quizzes_${newName}`);
+                migrateKey(`tracked_course_quizzes_locked_${oldName}`, `tracked_course_quizzes_locked_${newName}`);
+                migrateKey(`tracked_course_quizzes_locked_${currentTidKey}_${oldName}`, `tracked_course_quizzes_locked_${currentTidKey}_${newName}`);
                 migrateKey(`tracked_quiz_scores_${oldName}`, `tracked_quiz_scores_${newName}`);
                 migrateKey(`tracked_course_exams_${oldName}`, `tracked_course_exams_${newName}`);
+                migrateKey(`tracked_course_exams_locked_${oldName}`, `tracked_course_exams_locked_${newName}`);
+                migrateKey(`tracked_course_exams_locked_${currentTidKey}_${oldName}`, `tracked_course_exams_locked_${currentTidKey}_${newName}`);
                 migrateKey(`tracked_exam_scores_${oldName}`, `tracked_exam_scores_${newName}`);
                 migrateKey(`tracked_course_attendance_${oldName}`, `tracked_course_attendance_${newName}`);
 
@@ -1011,10 +1017,13 @@ document.addEventListener("DOMContentLoaded", () => {
             localStorage.removeItem(`tracked_enrolled_${courseToDeleteName}`);
             localStorage.removeItem(`tracked_enrolled_${delNameLower}`);
             localStorage.removeItem(`tracked_course_activities_${courseToDeleteName}`);
+            localStorage.removeItem(`tracked_course_activities_locked_${courseToDeleteName}`);
             localStorage.removeItem(`tracked_activity_scores_${courseToDeleteName}`);
             localStorage.removeItem(`tracked_course_quizzes_${courseToDeleteName}`);
+            localStorage.removeItem(`tracked_course_quizzes_locked_${courseToDeleteName}`);
             localStorage.removeItem(`tracked_quiz_scores_${courseToDeleteName}`);
             localStorage.removeItem(`tracked_course_exams_${courseToDeleteName}`);
+            localStorage.removeItem(`tracked_course_exams_locked_${courseToDeleteName}`);
             localStorage.removeItem(`tracked_exam_scores_${courseToDeleteName}`);
             localStorage.removeItem(`tracked_course_attendance_${courseToDeleteName}`);
 
@@ -1022,10 +1031,13 @@ document.addEventListener("DOMContentLoaded", () => {
             const currentTidKey = (localStorage.getItem("tracked_teacher_id") || "T-2024-0042").toLowerCase().replace(/[^a-z0-9]/g, "_");
             localStorage.removeItem(`tracked_enrolled_${currentTidKey}_${courseToDeleteName}`);
             localStorage.removeItem(`tracked_course_activities_${currentTidKey}_${courseToDeleteName}`);
+            localStorage.removeItem(`tracked_course_activities_locked_${currentTidKey}_${courseToDeleteName}`);
             localStorage.removeItem(`tracked_activity_scores_${currentTidKey}_${courseToDeleteName}`);
             localStorage.removeItem(`tracked_course_quizzes_${currentTidKey}_${courseToDeleteName}`);
+            localStorage.removeItem(`tracked_course_quizzes_locked_${currentTidKey}_${courseToDeleteName}`);
             localStorage.removeItem(`tracked_quiz_scores_${currentTidKey}_${courseToDeleteName}`);
             localStorage.removeItem(`tracked_course_exams_${currentTidKey}_${courseToDeleteName}`);
+            localStorage.removeItem(`tracked_course_exams_locked_${currentTidKey}_${courseToDeleteName}`);
             localStorage.removeItem(`tracked_exam_scores_${currentTidKey}_${courseToDeleteName}`);
             localStorage.removeItem(`tracked_course_attendance_${currentTidKey}_${courseToDeleteName}`);
 
@@ -1339,6 +1351,9 @@ document.addEventListener("DOMContentLoaded", () => {
                     if (match.middleName !== undefined) item.middleName = match.middleName;
                     if (match.lastName)   item.lastName   = match.lastName;
                 }
+                if (!item.remarks) {
+                    item.remarks = item.status || "Enrolled";
+                }
             });
 
             return list;
@@ -1356,7 +1371,7 @@ document.addEventListener("DOMContentLoaded", () => {
             if (list.length === 0) {
                 enrolledStudentsBody.innerHTML = `
                     <tr>
-                        <td colspan="3" style="text-align: center; color: #94a3b8; padding: 22px;">
+                        <td colspan="4" style="text-align: center; color: #94a3b8; padding: 22px;">
                             No students enrolled yet. Enter a Student ID above to enroll.
                         </td>
                     </tr>
@@ -1372,9 +1387,18 @@ document.addEventListener("DOMContentLoaded", () => {
                 sorted.forEach(student => {
                     const tr = document.createElement("tr");
                     tr.setAttribute("data-student-id", student.id);
+                    const r = (student.remarks || student.status || "Enrolled").trim();
+                    const isDropped = r.toLowerCase().startsWith("drop");
+
                     tr.innerHTML = `
                         <td>${escapeHtml(student.id)}</td>
                         <td>${escapeHtml(formatStudentName(student))}</td>
+                        <td>
+                            <select class="remarks-select ${isDropped ? 'remark-drop' : 'remark-enrolled'}" data-student-id="${escapeHtml(student.id)}" title="Enrollment Remarks">
+                                <option value="Enrolled" ${!isDropped ? "selected" : ""}>Enrolled</option>
+                                <option value="Drop" ${isDropped ? "selected" : ""}>Drop</option>
+                            </select>
+                        </td>
                         <td>
                             <button type="button" class="remove-btn" title="Remove Student">
                                 <i class="fa-solid fa-trash"></i> Remove
@@ -1481,7 +1505,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 name:       currentEnrollStudent.name,
                 firstName:  currentEnrollStudent.firstName  || "",
                 middleName: currentEnrollStudent.middleName || "",
-                lastName:   currentEnrollStudent.lastName   || ""
+                lastName:   currentEnrollStudent.lastName   || "",
+                remarks:    "Enrolled"
             });
             saveEnrolledStudents(enrolledList);
             renderEnrolledTable();
@@ -1504,6 +1529,31 @@ document.addEventListener("DOMContentLoaded", () => {
             setTimeout(() => {
                 if (enrollSuccessAlert) enrollSuccessAlert.style.display = "none";
             }, 3500);
+        });
+
+        // Handle student remarks dropdown change
+        enrolledStudentsBody.addEventListener("change", (e) => {
+            const selectEl = e.target.closest(".remarks-select");
+            if (selectEl) {
+                const studentId = selectEl.getAttribute("data-student-id");
+                const newRemark = selectEl.value; // "Enrolled" or "Drop"
+                let enrolledList = getEnrolledStudents();
+                const student = enrolledList.find(s => s.id === studentId);
+                if (student) {
+                    student.remarks = newRemark;
+                    saveEnrolledStudents(enrolledList);
+                    if (newRemark === "Drop") {
+                        selectEl.classList.remove("remark-enrolled");
+                        selectEl.classList.add("remark-drop");
+                    } else {
+                        selectEl.classList.remove("remark-drop");
+                        selectEl.classList.add("remark-enrolled");
+                    }
+                    if (window.TrackED_DB && typeof window.TrackED_DB.updateEnrollmentRemarks === "function") {
+                        window.TrackED_DB.updateEnrollmentRemarks(currentCourseName, studentId, newRemark);
+                    }
+                }
+            }
         });
 
         // Handle student removal
@@ -1565,12 +1615,21 @@ document.addEventListener("DOMContentLoaded", () => {
                             if (match.middleName !== undefined) item.middleName = match.middleName;
                             if (match.lastName)   item.lastName   = match.lastName;
                         }
+                        if (!item.remarks) {
+                            item.remarks = item.status || "Enrolled";
+                        }
                     });
                     return parsed;
                 }
             } catch (e) {}
         }
         return [];
+    }
+
+    function isStudentDropped(student) {
+        if (!student) return false;
+        const r = (student.remarks || student.status || "").trim().toLowerCase();
+        return r.startsWith("drop");
     }
 
     const currentActiveCourse = activeCourseName || "Programming Fundamentals";
@@ -1593,8 +1652,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const activityAlertSuccessMsg = document.getElementById("activityAlertSuccessMsg");
 
     if (activityTableBody && addActivityBtn) {
-        const activitiesKey = `tracked_course_activities_${currentTidKey}_${currentActiveCourse}`;
-        const scoresKey     = `tracked_activity_scores_${currentTidKey}_${currentActiveCourse}`;
+        const activitiesKey       = `tracked_course_activities_${currentTidKey}_${currentActiveCourse}`;
+        const scoresKey           = `tracked_activity_scores_${currentTidKey}_${currentActiveCourse}`;
+        const lockedActivitiesKey = `tracked_course_activities_locked_${currentTidKey}_${currentActiveCourse}`;
 
         function getActivities() {
             let raw = localStorage.getItem(activitiesKey);
@@ -1626,6 +1686,39 @@ document.addEventListener("DOMContentLoaded", () => {
         let currentActivities  = getActivities();
         let currentScores      = getScores();
 
+        function getLockedActivities() {
+            let raw = localStorage.getItem(lockedActivitiesKey);
+            if (raw === null) {
+                raw = localStorage.getItem(`tracked_course_activities_locked_${currentActiveCourse}`);
+            }
+            let list = [];
+            if (raw !== null) {
+                try {
+                    list = JSON.parse(raw);
+                    if (!Array.isArray(list)) list = [];
+                } catch(e) {
+                    list = [];
+                }
+            }
+            // Auto-lock any activity where non-empty scores were previously saved
+            currentActivities.forEach(act => {
+                const actNumInt = parseInt(act.num, 10);
+                if (!list.includes(actNumInt) && !list.includes(String(act.num))) {
+                    const hasSaved = Object.keys(currentScores).some(sId => {
+                        const sc = currentScores[sId];
+                        return sc && sc[act.num] !== undefined && sc[act.num] !== null && sc[act.num] !== "";
+                    });
+                    if (hasSaved) list.push(actNumInt);
+                }
+            });
+            return list.map(n => parseInt(n, 10));
+        }
+
+        function saveLockedActivities(list) {
+            localStorage.setItem(lockedActivitiesKey, JSON.stringify(list));
+            localStorage.setItem(`tracked_course_activities_locked_${currentActiveCourse}`, JSON.stringify(list));
+        }
+
         function saveActivitiesData() {
             localStorage.setItem(activitiesKey, JSON.stringify(currentActivities));
             localStorage.setItem(`tracked_course_activities_${currentActiveCourse}`, JSON.stringify(currentActivities));
@@ -1646,6 +1739,7 @@ document.addEventListener("DOMContentLoaded", () => {
             currentActivities = getActivities();
             currentScores = getScores();
             const enrolledStudents = getEnrolledStudentsForCourse(currentActiveCourse);
+            const lockedActs = getLockedActivities();
 
             // Render Head
             if (activityTableHead) {
@@ -1658,14 +1752,19 @@ document.addEventListener("DOMContentLoaded", () => {
                     thHtml += `<th>Activities</th>`;
                 } else {
                     currentActivities.forEach(act => {
+                        const actNumInt = parseInt(act.num, 10);
+                        const isLocked = lockedActs.includes(actNumInt);
                         thHtml += `
                             <th class="th-activity-header" data-act-num="${act.num}">
                                 <div class="th-header-inner">
                                     <div class="th-title-row">
                                         <span class="th-activity-title">${escapeHtml(act.name)}</span>
-                                        <button type="button" class="th-delete-btn" data-act-num="${act.num}" title="Delete ${escapeHtml(act.name)}">
-                                            <i class="fa-solid fa-trash-can"></i>
-                                        </button>
+                                        ${isLocked
+                                            ? `<span class="th-locked-badge" title="Scores are saved and locked"><i class="fa-solid fa-lock"></i></span>`
+                                            : `<button type="button" class="th-delete-btn" data-act-num="${act.num}" title="Delete ${escapeHtml(act.name)}">
+                                                   <i class="fa-solid fa-trash-can"></i>
+                                               </button>`
+                                        }
                                     </div>
                                     <span class="th-activity-max">Max: ${act.maxScore}</span>
                                 </div>
@@ -1707,6 +1806,7 @@ document.addEventListener("DOMContentLoaded", () => {
             [...enrolledStudents].sort((a, b) => studentSortKey(a).localeCompare(studentSortKey(b))).forEach(st => {
                 const tr = document.createElement("tr");
                 tr.setAttribute("data-student-id", st.id);
+                const stDropped = isStudentDropped(st);
 
                 let rowHtml = `
                     <td><strong>${escapeHtml(st.id)}</strong></td>
@@ -1714,34 +1814,87 @@ document.addEventListener("DOMContentLoaded", () => {
                 `;
 
                 currentActivities.forEach(act => {
+                    const actNumInt = parseInt(act.num, 10);
+                    const isActLocked = lockedActs.includes(actNumInt);
                     const stScores = currentScores[st.id] || {};
                     const val = (stScores[act.num] !== undefined && stScores[act.num] !== null) ? stScores[act.num] : "";
-                    const isInvalid = val !== "" && (Number(val) > act.maxScore || Number(val) < 0);
-                    const invalidClass = isInvalid ? " invalid" : "";
-                    const invalidTitle = isInvalid ? `title="Score cannot exceed maximum of ${act.maxScore}"` : "";
-                    rowHtml += `
-                        <td class="score-cell">
-                            <div class="score-input-wrap${invalidClass}">
-                                <input 
-                                    type="number" 
-                                    class="score-num-input" 
-                                    data-student-id="${escapeHtml(st.id)}" 
-                                    data-act-num="${act.num}" 
-                                    min="0" 
-                                    max="${act.maxScore}" 
-                                    value="${val}" 
-                                    placeholder="0"
-                                    ${invalidTitle}
-                                >
-                                <span class="score-max-label">/ ${act.maxScore}</span>
-                            </div>
-                        </td>
-                    `;
+
+                    if (stDropped) {
+                        rowHtml += `
+                            <td class="score-cell">
+                                <div class="score-input-wrap dropped-student" title="Student is dropped - Cannot record scores">
+                                    <input 
+                                        type="text" 
+                                        class="score-num-input" 
+                                        disabled 
+                                        value="${val !== '' ? val : '-'}" 
+                                        placeholder="Drop" 
+                                        title="Student is dropped - Cannot record scores"
+                                    >
+                                    <span class="score-max-label">/ ${act.maxScore}</span>
+                                </div>
+                            </td>
+                        `;
+                    } else if (isActLocked) {
+                        rowHtml += `
+                            <td class="score-cell">
+                                <div class="score-input-wrap locked" title="Score is already saved and locked">
+                                    <input 
+                                        type="number" 
+                                        class="score-num-input" 
+                                        disabled 
+                                        value="${val}" 
+                                        placeholder="0"
+                                        title="Score is saved and locked"
+                                    >
+                                    <span class="score-max-label">/ ${act.maxScore}</span>
+                                </div>
+                            </td>
+                        `;
+                    } else {
+                        const isInvalid = val !== "" && (Number(val) > act.maxScore || Number(val) < 0);
+                        const invalidClass = isInvalid ? " invalid" : "";
+                        const invalidTitle = isInvalid ? `title="Score cannot exceed maximum of ${act.maxScore}"` : "";
+                        rowHtml += `
+                            <td class="score-cell">
+                                <div class="score-input-wrap${invalidClass}">
+                                    <input 
+                                        type="number" 
+                                        class="score-num-input" 
+                                        data-student-id="${escapeHtml(st.id)}" 
+                                        data-act-num="${act.num}" 
+                                        min="0" 
+                                        max="${act.maxScore}" 
+                                        value="${val}" 
+                                        placeholder="0"
+                                        ${invalidTitle}
+                                    >
+                                    <span class="score-max-label">/ ${act.maxScore}</span>
+                                </div>
+                            </td>
+                        `;
+                    }
                 });
 
                 tr.innerHTML = rowHtml;
                 activityTableBody.appendChild(tr);
             });
+
+            // Update Save Button state
+            if (saveScoresBtn) {
+                const allLocked = currentActivities.length > 0 && currentActivities.every(a => lockedActs.includes(parseInt(a.num, 10)));
+                if (allLocked) {
+                    saveScoresBtn.disabled = true;
+                    saveScoresBtn.classList.add("btn-locked");
+                    saveScoresBtn.innerHTML = `<i class="fa-solid fa-lock"></i> All Scores Locked`;
+                    saveScoresBtn.title = "All activity scores are already saved and locked";
+                } else {
+                    saveScoresBtn.disabled = false;
+                    saveScoresBtn.classList.remove("btn-locked");
+                    saveScoresBtn.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Save Scores`;
+                    saveScoresBtn.title = "";
+                }
+            }
         }
 
         // Real-time score validation on input
@@ -1872,7 +2025,12 @@ document.addEventListener("DOMContentLoaded", () => {
         // Save Scores Button
         if (saveScoresBtn) {
             saveScoresBtn.addEventListener("click", () => {
-                const inputs = activityTableBody.querySelectorAll(".score-num-input");
+                const inputs = activityTableBody.querySelectorAll(".score-num-input:not([disabled])");
+                if (inputs.length === 0) {
+                    alert("No new scores to save or all activity scores are already locked.");
+                    return;
+                }
+
                 let hasError = false;
                 let firstInvalidInp = null;
                 let errorMsg = "";
@@ -1935,14 +2093,23 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
 
                 // 2. All scores are valid - proceed with save
+                const newlySavedActs = new Set();
                 inputs.forEach(inp => {
                     const sId = inp.getAttribute("data-student-id");
-                    const aNum = inp.getAttribute("data-act-num");
+                    const aNum = parseInt(inp.getAttribute("data-act-num"), 10);
                     const val = inp.value.trim();
                     if (!currentScores[sId]) currentScores[sId] = {};
                     currentScores[sId][aNum] = val === "" ? "" : Number(val);
+                    if (!isNaN(aNum)) newlySavedActs.add(aNum);
                 });
                 saveScoresData();
+
+                // Lock newly saved activities
+                const lockedList = getLockedActivities();
+                newlySavedActs.forEach(num => {
+                    if (!lockedList.includes(num)) lockedList.push(num);
+                });
+                saveLockedActivities(lockedList);
 
                 // Sync scores to Supabase Cloud if connected
                 if (window.TrackED_DB && typeof window.TrackED_DB.saveActivityScores === "function") {
@@ -1965,24 +2132,20 @@ document.addEventListener("DOMContentLoaded", () => {
                 });
                 localStorage.setItem(studentStorageKey, JSON.stringify(syncRecords));
 
-                // Button visual feedback
-                const origHtml = saveScoresBtn.innerHTML;
-                saveScoresBtn.innerHTML = `<i class="fa-solid fa-circle-check"></i> Scores Saved!`;
-                saveScoresBtn.style.backgroundColor = "#059669";
+                // Re-render table so all saved inputs are immediately locked
+                renderActivityTable();
 
                 if (activityAlertSuccess && activityAlertSuccessMsg) {
                     activityAlertSuccess.className = "modal-alert success";
                     const icon = activityAlertSuccess.querySelector("i");
                     if (icon) icon.className = "fa-solid fa-circle-check";
-                    activityAlertSuccessMsg.textContent = "All student activity scores have been saved successfully!";
+                    activityAlertSuccessMsg.textContent = "All student activity scores have been saved successfully! Scores are now locked and cannot be edited.";
                     activityAlertSuccess.style.display = "flex";
                 }
 
                 setTimeout(() => {
-                    saveScoresBtn.innerHTML = origHtml;
-                    saveScoresBtn.style.backgroundColor = "";
                     if (activityAlertSuccess) activityAlertSuccess.style.display = "none";
-                }, 2000);
+                }, 4000);
             });
         }
     }
@@ -2005,8 +2168,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const quizAlertSuccessMsg = document.getElementById("quizAlertSuccessMsg");
 
     if (quizTableBody && addQuizBtn) {
-        const quizzesKey = `tracked_course_quizzes_${currentTidKey}_${currentActiveCourse}`;
-        const scoresKey  = `tracked_quiz_scores_${currentTidKey}_${currentActiveCourse}`;
+        const quizzesKey       = `tracked_course_quizzes_${currentTidKey}_${currentActiveCourse}`;
+        const scoresKey        = `tracked_quiz_scores_${currentTidKey}_${currentActiveCourse}`;
+        const lockedQuizzesKey = `tracked_course_quizzes_locked_${currentTidKey}_${currentActiveCourse}`;
 
         function getQuizzes() {
             let raw = localStorage.getItem(quizzesKey);
@@ -2038,6 +2202,39 @@ document.addEventListener("DOMContentLoaded", () => {
         let currentQuizzes     = getQuizzes();
         let currentQuizScores  = getQuizScores();
 
+        function getLockedQuizzes() {
+            let raw = localStorage.getItem(lockedQuizzesKey);
+            if (raw === null) {
+                raw = localStorage.getItem(`tracked_course_quizzes_locked_${currentActiveCourse}`);
+            }
+            let list = [];
+            if (raw !== null) {
+                try {
+                    list = JSON.parse(raw);
+                    if (!Array.isArray(list)) list = [];
+                } catch(e) {
+                    list = [];
+                }
+            }
+            // Auto-lock any quiz where non-empty scores were previously saved
+            currentQuizzes.forEach(q => {
+                const qNumInt = parseInt(q.num, 10);
+                if (!list.includes(qNumInt) && !list.includes(String(q.num))) {
+                    const hasSaved = Object.keys(currentQuizScores).some(sId => {
+                        const sc = currentQuizScores[sId];
+                        return sc && sc[q.num] !== undefined && sc[q.num] !== null && sc[q.num] !== "";
+                    });
+                    if (hasSaved) list.push(qNumInt);
+                }
+            });
+            return list.map(n => parseInt(n, 10));
+        }
+
+        function saveLockedQuizzes(list) {
+            localStorage.setItem(lockedQuizzesKey, JSON.stringify(list));
+            localStorage.setItem(`tracked_course_quizzes_locked_${currentActiveCourse}`, JSON.stringify(list));
+        }
+
         function saveQuizzesData() {
             localStorage.setItem(quizzesKey, JSON.stringify(currentQuizzes));
             localStorage.setItem(`tracked_course_quizzes_${currentActiveCourse}`, JSON.stringify(currentQuizzes));
@@ -2058,6 +2255,8 @@ document.addEventListener("DOMContentLoaded", () => {
             currentQuizzes = getQuizzes();
             currentQuizScores = getQuizScores();
             const enrolledStudents = getEnrolledStudentsForCourse(currentActiveCourse);
+            const lockedQs = getLockedQuizzes();
+
             if (quizTableHead) {
                 let thHtml = `
                     <tr>
@@ -2068,14 +2267,19 @@ document.addEventListener("DOMContentLoaded", () => {
                     thHtml += `<th>Quizzes</th>`;
                 } else {
                     currentQuizzes.forEach(q => {
+                        const qNumInt = parseInt(q.num, 10);
+                        const isLocked = lockedQs.includes(qNumInt);
                         thHtml += `
                             <th class="th-activity-header" data-quiz-num="${q.num}">
                                 <div class="th-header-inner">
                                     <div class="th-title-row">
                                         <span class="th-activity-title">${escapeHtml(q.name)}</span>
-                                        <button type="button" class="th-delete-btn" data-quiz-num="${q.num}" title="Delete ${escapeHtml(q.name)}">
-                                            <i class="fa-solid fa-trash-can"></i>
-                                        </button>
+                                        ${isLocked
+                                            ? `<span class="th-locked-badge" title="Scores are saved and locked"><i class="fa-solid fa-lock"></i></span>`
+                                            : `<button type="button" class="th-delete-btn" data-quiz-num="${q.num}" title="Delete ${escapeHtml(q.name)}">
+                                                   <i class="fa-solid fa-trash-can"></i>
+                                               </button>`
+                                        }
                                     </div>
                                     <span class="th-activity-max">Max: ${q.maxScore}</span>
                                 </div>
@@ -2116,6 +2320,7 @@ document.addEventListener("DOMContentLoaded", () => {
             [...enrolledStudents].sort((a, b) => studentSortKey(a).localeCompare(studentSortKey(b))).forEach(st => {
                 const tr = document.createElement("tr");
                 tr.setAttribute("data-student-id", st.id);
+                const stDropped = isStudentDropped(st);
 
                 let rowHtml = `
                     <td><strong>${escapeHtml(st.id)}</strong></td>
@@ -2123,34 +2328,87 @@ document.addEventListener("DOMContentLoaded", () => {
                 `;
 
                 currentQuizzes.forEach(q => {
+                    const qNumInt = parseInt(q.num, 10);
+                    const isQLocked = lockedQs.includes(qNumInt);
                     const stScores = currentQuizScores[st.id] || {};
                     const val = (stScores[q.num] !== undefined && stScores[q.num] !== null) ? stScores[q.num] : "";
-                    const isInvalid = val !== "" && (Number(val) > q.maxScore || Number(val) < 0);
-                    const invalidClass = isInvalid ? " invalid" : "";
-                    const invalidTitle = isInvalid ? `title="Score cannot exceed maximum of ${q.maxScore}"` : "";
-                    rowHtml += `
-                        <td class="score-cell">
-                            <div class="score-input-wrap${invalidClass}">
-                                <input 
-                                    type="number" 
-                                    class="score-num-input" 
-                                    data-student-id="${escapeHtml(st.id)}" 
-                                    data-quiz-num="${q.num}" 
-                                    min="0" 
-                                    max="${q.maxScore}" 
-                                    value="${val}" 
-                                    placeholder="0"
-                                    ${invalidTitle}
-                                >
-                                <span class="score-max-label">/ ${q.maxScore}</span>
-                            </div>
-                        </td>
-                    `;
+
+                    if (stDropped) {
+                        rowHtml += `
+                            <td class="score-cell">
+                                <div class="score-input-wrap dropped-student" title="Student is dropped - Cannot record scores">
+                                    <input 
+                                        type="text" 
+                                        class="score-num-input" 
+                                        disabled 
+                                        value="${val !== '' ? val : '-'}" 
+                                        placeholder="Drop" 
+                                        title="Student is dropped - Cannot record scores"
+                                    >
+                                    <span class="score-max-label">/ ${q.maxScore}</span>
+                                </div>
+                            </td>
+                        `;
+                    } else if (isQLocked) {
+                        rowHtml += `
+                            <td class="score-cell">
+                                <div class="score-input-wrap locked" title="Score is already saved and locked">
+                                    <input 
+                                        type="number" 
+                                        class="score-num-input" 
+                                        disabled 
+                                        value="${val}" 
+                                        placeholder="0"
+                                        title="Score is saved and locked"
+                                    >
+                                    <span class="score-max-label">/ ${q.maxScore}</span>
+                                </div>
+                            </td>
+                        `;
+                    } else {
+                        const isInvalid = val !== "" && (Number(val) > q.maxScore || Number(val) < 0);
+                        const invalidClass = isInvalid ? " invalid" : "";
+                        const invalidTitle = isInvalid ? `title="Score cannot exceed maximum of ${q.maxScore}"` : "";
+                        rowHtml += `
+                            <td class="score-cell">
+                                <div class="score-input-wrap${invalidClass}">
+                                    <input 
+                                        type="number" 
+                                        class="score-num-input" 
+                                        data-student-id="${escapeHtml(st.id)}" 
+                                        data-quiz-num="${q.num}" 
+                                        min="0" 
+                                        max="${q.maxScore}" 
+                                        value="${val}" 
+                                        placeholder="0"
+                                        ${invalidTitle}
+                                    >
+                                    <span class="score-max-label">/ ${q.maxScore}</span>
+                                </div>
+                            </td>
+                        `;
+                    }
                 });
 
                 tr.innerHTML = rowHtml;
                 quizTableBody.appendChild(tr);
             });
+
+            // Update Save Button state
+            if (saveQuizScoresBtn) {
+                const allLocked = currentQuizzes.length > 0 && currentQuizzes.every(q => lockedQs.includes(parseInt(q.num, 10)));
+                if (allLocked) {
+                    saveQuizScoresBtn.disabled = true;
+                    saveQuizScoresBtn.classList.add("btn-locked");
+                    saveQuizScoresBtn.innerHTML = `<i class="fa-solid fa-lock"></i> All Scores Locked`;
+                    saveQuizScoresBtn.title = "All quiz scores are already saved and locked";
+                } else {
+                    saveQuizScoresBtn.disabled = false;
+                    saveQuizScoresBtn.classList.remove("btn-locked");
+                    saveQuizScoresBtn.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Save Scores`;
+                    saveQuizScoresBtn.title = "";
+                }
+            }
         }
 
         // Real-time score validation on input for quizzes
@@ -2276,7 +2534,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
         if (saveQuizScoresBtn) {
             saveQuizScoresBtn.addEventListener("click", () => {
-                const inputs = quizTableBody.querySelectorAll(".score-num-input");
+                const inputs = quizTableBody.querySelectorAll(".score-num-input:not([disabled])");
+                if (inputs.length === 0) {
+                    alert("No new scores to save or all quiz scores are already locked.");
+                    return;
+                }
+
                 let hasError = false;
                 let firstInvalidInp = null;
                 let errorMsg = "";
@@ -2339,14 +2602,23 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
 
                 // 2. All scores are valid - proceed with save
+                const newlySavedQuizzes = new Set();
                 inputs.forEach(inp => {
                     const sId = inp.getAttribute("data-student-id");
-                    const qNum = inp.getAttribute("data-quiz-num");
+                    const qNum = parseInt(inp.getAttribute("data-quiz-num"), 10);
                     const val = inp.value.trim();
                     if (!currentQuizScores[sId]) currentQuizScores[sId] = {};
                     currentQuizScores[sId][qNum] = val === "" ? "" : Number(val);
+                    if (!isNaN(qNum)) newlySavedQuizzes.add(qNum);
                 });
                 saveQuizScoresData();
+
+                // Lock newly saved quizzes
+                const lockedList = getLockedQuizzes();
+                newlySavedQuizzes.forEach(num => {
+                    if (!lockedList.includes(num)) lockedList.push(num);
+                });
+                saveLockedQuizzes(lockedList);
 
                 // Sync quiz scores to Supabase Cloud if connected
                 if (window.TrackED_DB && typeof window.TrackED_DB.saveQuizScores === "function") {
@@ -2368,23 +2640,20 @@ document.addEventListener("DOMContentLoaded", () => {
                 });
                 localStorage.setItem(studentStorageKey, JSON.stringify(syncRecords));
 
-                const origHtml = saveQuizScoresBtn.innerHTML;
-                saveQuizScoresBtn.innerHTML = `<i class="fa-solid fa-circle-check"></i> Scores Saved!`;
-                saveQuizScoresBtn.style.backgroundColor = "#059669";
+                // Re-render table so all saved inputs are immediately locked
+                renderQuizTable();
 
                 if (quizAlertSuccess && quizAlertSuccessMsg) {
                     quizAlertSuccess.className = "modal-alert success";
                     const icon = quizAlertSuccess.querySelector("i");
                     if (icon) icon.className = "fa-solid fa-circle-check";
-                    quizAlertSuccessMsg.textContent = "All student quiz scores have been saved successfully!";
+                    quizAlertSuccessMsg.textContent = "All student quiz scores have been saved successfully! Scores are now locked and cannot be edited.";
                     quizAlertSuccess.style.display = "flex";
                 }
 
                 setTimeout(() => {
-                    saveQuizScoresBtn.innerHTML = origHtml;
-                    saveQuizScoresBtn.style.backgroundColor = "";
                     if (quizAlertSuccess) quizAlertSuccess.style.display = "none";
-                }, 2000);
+                }, 4000);
             });
         }
     }
@@ -2407,8 +2676,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const examAlertSuccessMsg = document.getElementById("examAlertSuccessMsg");
 
     if (examTableBody && addExamBtn) {
-        const examsKey  = `tracked_course_exams_${currentTidKey}_${currentActiveCourse}`;
-        const scoresKey = `tracked_exam_scores_${currentTidKey}_${currentActiveCourse}`;
+        const examsKey        = `tracked_course_exams_${currentTidKey}_${currentActiveCourse}`;
+        const scoresKey       = `tracked_exam_scores_${currentTidKey}_${currentActiveCourse}`;
+        const lockedExamsKey  = `tracked_course_exams_locked_${currentTidKey}_${currentActiveCourse}`;
 
         function getExams() {
             let raw = localStorage.getItem(examsKey);
@@ -2440,6 +2710,39 @@ document.addEventListener("DOMContentLoaded", () => {
         let currentExams       = getExams();
         let currentExamScores  = getExamScores();
 
+        function getLockedExams() {
+            let raw = localStorage.getItem(lockedExamsKey);
+            if (raw === null) {
+                raw = localStorage.getItem(`tracked_course_exams_locked_${currentActiveCourse}`);
+            }
+            let list = [];
+            if (raw !== null) {
+                try {
+                    list = JSON.parse(raw);
+                    if (!Array.isArray(list)) list = [];
+                } catch(e) {
+                    list = [];
+                }
+            }
+            // Auto-lock any exam where non-empty scores were previously saved
+            currentExams.forEach(ex => {
+                const exNumInt = parseInt(ex.num, 10);
+                if (!list.includes(exNumInt) && !list.includes(String(ex.num))) {
+                    const hasSaved = Object.keys(currentExamScores).some(sId => {
+                        const sc = currentExamScores[sId];
+                        return sc && sc[ex.num] !== undefined && sc[ex.num] !== null && sc[ex.num] !== "";
+                    });
+                    if (hasSaved) list.push(exNumInt);
+                }
+            });
+            return list.map(n => parseInt(n, 10));
+        }
+
+        function saveLockedExams(list) {
+            localStorage.setItem(lockedExamsKey, JSON.stringify(list));
+            localStorage.setItem(`tracked_course_exams_locked_${currentActiveCourse}`, JSON.stringify(list));
+        }
+
         function saveExamsData() {
             localStorage.setItem(examsKey, JSON.stringify(currentExams));
             localStorage.setItem(`tracked_course_exams_${currentActiveCourse}`, JSON.stringify(currentExams));
@@ -2460,6 +2763,8 @@ document.addEventListener("DOMContentLoaded", () => {
             currentExams = getExams();
             currentExamScores = getExamScores();
             const enrolledStudents = getEnrolledStudentsForCourse(currentActiveCourse);
+            const lockedExs = getLockedExams();
+
             if (examTableHead) {
                 let thHtml = `
                     <tr>
@@ -2470,14 +2775,19 @@ document.addEventListener("DOMContentLoaded", () => {
                     thHtml += `<th>Exams</th>`;
                 } else {
                     currentExams.forEach(ex => {
+                        const exNumInt = parseInt(ex.num, 10);
+                        const isLocked = lockedExs.includes(exNumInt);
                         thHtml += `
                             <th class="th-activity-header" data-exam-num="${ex.num}">
                                 <div class="th-header-inner">
                                     <div class="th-title-row">
                                         <span class="th-activity-title">${escapeHtml(ex.name)}</span>
-                                        <button type="button" class="th-delete-btn" data-exam-num="${ex.num}" title="Delete ${escapeHtml(ex.name)}">
-                                            <i class="fa-solid fa-trash-can"></i>
-                                        </button>
+                                        ${isLocked
+                                            ? `<span class="th-locked-badge" title="Scores are saved and locked"><i class="fa-solid fa-lock"></i></span>`
+                                            : `<button type="button" class="th-delete-btn" data-exam-num="${ex.num}" title="Delete ${escapeHtml(ex.name)}">
+                                                   <i class="fa-solid fa-trash-can"></i>
+                                               </button>`
+                                        }
                                     </div>
                                     <span class="th-activity-max">Max: ${ex.maxScore}</span>
                                 </div>
@@ -2518,6 +2828,7 @@ document.addEventListener("DOMContentLoaded", () => {
             [...enrolledStudents].sort((a, b) => studentSortKey(a).localeCompare(studentSortKey(b))).forEach(st => {
                 const tr = document.createElement("tr");
                 tr.setAttribute("data-student-id", st.id);
+                const stDropped = isStudentDropped(st);
 
                 let rowHtml = `
                     <td><strong>${escapeHtml(st.id)}</strong></td>
@@ -2525,34 +2836,87 @@ document.addEventListener("DOMContentLoaded", () => {
                 `;
 
                 currentExams.forEach(ex => {
+                    const exNumInt = parseInt(ex.num, 10);
+                    const isExLocked = lockedExs.includes(exNumInt);
                     const stScores = currentExamScores[st.id] || {};
                     const val = (stScores[ex.num] !== undefined && stScores[ex.num] !== null) ? stScores[ex.num] : "";
-                    const isInvalid = val !== "" && (Number(val) > ex.maxScore || Number(val) < 0);
-                    const invalidClass = isInvalid ? " invalid" : "";
-                    const invalidTitle = isInvalid ? `title="Score cannot exceed maximum of ${ex.maxScore}"` : "";
-                    rowHtml += `
-                        <td class="score-cell">
-                            <div class="score-input-wrap${invalidClass}">
-                                <input 
-                                    type="number" 
-                                    class="score-num-input" 
-                                    data-student-id="${escapeHtml(st.id)}" 
-                                    data-exam-num="${ex.num}" 
-                                    min="0" 
-                                    max="${ex.maxScore}" 
-                                    value="${val}" 
-                                    placeholder="0"
-                                    ${invalidTitle}
-                                >
-                                <span class="score-max-label">/ ${ex.maxScore}</span>
-                            </div>
-                        </td>
-                    `;
+
+                    if (stDropped) {
+                        rowHtml += `
+                            <td class="score-cell">
+                                <div class="score-input-wrap dropped-student" title="Student is dropped - Cannot record scores">
+                                    <input 
+                                        type="text" 
+                                        class="score-num-input" 
+                                        disabled 
+                                        value="${val !== '' ? val : '-'}" 
+                                        placeholder="Drop" 
+                                        title="Student is dropped - Cannot record scores"
+                                    >
+                                    <span class="score-max-label">/ ${ex.maxScore}</span>
+                                </div>
+                            </td>
+                        `;
+                    } else if (isExLocked) {
+                        rowHtml += `
+                            <td class="score-cell">
+                                <div class="score-input-wrap locked" title="Score is already saved and locked">
+                                    <input 
+                                        type="number" 
+                                        class="score-num-input" 
+                                        disabled 
+                                        value="${val}" 
+                                        placeholder="0"
+                                        title="Score is saved and locked"
+                                    >
+                                    <span class="score-max-label">/ ${ex.maxScore}</span>
+                                </div>
+                            </td>
+                        `;
+                    } else {
+                        const isInvalid = val !== "" && (Number(val) > ex.maxScore || Number(val) < 0);
+                        const invalidClass = isInvalid ? " invalid" : "";
+                        const invalidTitle = isInvalid ? `title="Score cannot exceed maximum of ${ex.maxScore}"` : "";
+                        rowHtml += `
+                            <td class="score-cell">
+                                <div class="score-input-wrap${invalidClass}">
+                                    <input 
+                                        type="number" 
+                                        class="score-num-input" 
+                                        data-student-id="${escapeHtml(st.id)}" 
+                                        data-exam-num="${ex.num}" 
+                                        min="0" 
+                                        max="${ex.maxScore}" 
+                                        value="${val}" 
+                                        placeholder="0"
+                                        ${invalidTitle}
+                                    >
+                                    <span class="score-max-label">/ ${ex.maxScore}</span>
+                                </div>
+                            </td>
+                        `;
+                    }
                 });
 
                 tr.innerHTML = rowHtml;
                 examTableBody.appendChild(tr);
             });
+
+            // Update Save Button state
+            if (saveExamScoresBtn) {
+                const allLocked = currentExams.length > 0 && currentExams.every(ex => lockedExs.includes(parseInt(ex.num, 10)));
+                if (allLocked) {
+                    saveExamScoresBtn.disabled = true;
+                    saveExamScoresBtn.classList.add("btn-locked");
+                    saveExamScoresBtn.innerHTML = `<i class="fa-solid fa-lock"></i> All Scores Locked`;
+                    saveExamScoresBtn.title = "All exam scores are already saved and locked";
+                } else {
+                    saveExamScoresBtn.disabled = false;
+                    saveExamScoresBtn.classList.remove("btn-locked");
+                    saveExamScoresBtn.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Save Scores`;
+                    saveExamScoresBtn.title = "";
+                }
+            }
         }
 
         // Real-time score validation on input for exams
@@ -2678,7 +3042,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
         if (saveExamScoresBtn) {
             saveExamScoresBtn.addEventListener("click", () => {
-                const inputs = examTableBody.querySelectorAll(".score-num-input");
+                const inputs = examTableBody.querySelectorAll(".score-num-input:not([disabled])");
+                if (inputs.length === 0) {
+                    alert("No new scores to save or all exam scores are already locked.");
+                    return;
+                }
+
                 let hasError = false;
                 let firstInvalidInp = null;
                 let errorMsg = "";
@@ -2741,14 +3110,23 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
 
                 // 2. All scores are valid - proceed with save
+                const newlySavedExams = new Set();
                 inputs.forEach(inp => {
                     const sId = inp.getAttribute("data-student-id");
-                    const exNum = inp.getAttribute("data-exam-num");
+                    const exNum = parseInt(inp.getAttribute("data-exam-num"), 10);
                     const val = inp.value.trim();
                     if (!currentExamScores[sId]) currentExamScores[sId] = {};
                     currentExamScores[sId][exNum] = val === "" ? "" : Number(val);
+                    if (!isNaN(exNum)) newlySavedExams.add(exNum);
                 });
                 saveExamScoresData();
+
+                // Lock newly saved exams
+                const lockedList = getLockedExams();
+                newlySavedExams.forEach(num => {
+                    if (!lockedList.includes(num)) lockedList.push(num);
+                });
+                saveLockedExams(lockedList);
 
                 // Sync exam scores to Supabase Cloud if connected
                 if (window.TrackED_DB && typeof window.TrackED_DB.saveExamScores === "function") {
@@ -2770,23 +3148,20 @@ document.addEventListener("DOMContentLoaded", () => {
                 });
                 localStorage.setItem(studentStorageKey, JSON.stringify(syncRecords));
 
-                const origHtml = saveExamScoresBtn.innerHTML;
-                saveExamScoresBtn.innerHTML = `<i class="fa-solid fa-circle-check"></i> Scores Saved!`;
-                saveExamScoresBtn.style.backgroundColor = "#059669";
+                // Re-render table so all saved inputs are immediately locked
+                renderExamTable();
 
                 if (examAlertSuccess && examAlertSuccessMsg) {
                     examAlertSuccess.className = "modal-alert success";
                     const icon = examAlertSuccess.querySelector("i");
                     if (icon) icon.className = "fa-solid fa-circle-check";
-                    examAlertSuccessMsg.textContent = "All student exam scores have been saved successfully!";
+                    examAlertSuccessMsg.textContent = "All student exam scores have been saved successfully! Scores are now locked and cannot be edited.";
                     examAlertSuccess.style.display = "flex";
                 }
 
                 setTimeout(() => {
-                    saveExamScoresBtn.innerHTML = origHtml;
-                    saveExamScoresBtn.style.backgroundColor = "";
                     if (examAlertSuccess) examAlertSuccess.style.display = "none";
-                }, 2000);
+                }, 4000);
             });
         }
     }
@@ -2863,6 +3238,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // Render attendance table for a given date
         function loadAttendanceForDate(dateStr) {
+            const todayStr = getTodayLocalDate();
+            // Clamp future date
+            if (dateStr && dateStr > todayStr) {
+                alert("Cannot record attendance for future dates. Setting date to today.");
+                dateStr = todayStr;
+                attendanceDateInput.value = todayStr;
+            }
+
             attendanceMap = getAllAttendanceRecords();
             const enrolledStudents = getEnrolledStudentsForCourse(currentActiveCourse);
             const hasRecord = Boolean(attendanceMap[dateStr]);
@@ -2872,7 +3255,7 @@ document.addEventListener("DOMContentLoaded", () => {
             if (attendanceDateBadge) {
                 if (hasRecord) {
                     attendanceDateBadge.className = "attendance-date-badge recorded";
-                    attendanceDateBadge.innerHTML = `<i class="fa-solid fa-circle-check"></i> Recorded`;
+                    attendanceDateBadge.innerHTML = `<i class="fa-solid fa-lock"></i> Saved & Locked`;
                 } else {
                     attendanceDateBadge.className = "attendance-date-badge new";
                     attendanceDateBadge.innerHTML = `<i class="fa-solid fa-pen"></i> New Date`;
@@ -2884,9 +3267,24 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (hasRecord) {
                     attendanceAlertBanner.className = "modal-alert info";
                     attendanceAlertBanner.style.display = "flex";
-                    attendanceAlertMsg.textContent = `Showing recorded attendance for ${formatDisplayDate(dateStr)}. You can update and click Save Attendance.`;
+                    attendanceAlertMsg.textContent = `Attendance for ${formatDisplayDate(dateStr)} has been recorded and locked. It cannot be edited.`;
                 } else {
                     attendanceAlertBanner.style.display = "none";
+                }
+            }
+
+            // Update save button state
+            if (saveAttendanceBtn) {
+                if (hasRecord) {
+                    saveAttendanceBtn.disabled = true;
+                    saveAttendanceBtn.classList.add("btn-locked");
+                    saveAttendanceBtn.innerHTML = `<i class="fa-solid fa-lock"></i> Attendance Saved & Locked`;
+                    saveAttendanceBtn.title = "Attendance for this date is already saved and locked";
+                } else {
+                    saveAttendanceBtn.disabled = false;
+                    saveAttendanceBtn.classList.remove("btn-locked");
+                    saveAttendanceBtn.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Save Attendance`;
+                    saveAttendanceBtn.title = "";
                 }
             }
 
@@ -2906,20 +3304,36 @@ document.addEventListener("DOMContentLoaded", () => {
             [...enrolledStudents].sort((a, b) => studentSortKey(a).localeCompare(studentSortKey(b))).forEach(st => {
                 const tr = document.createElement("tr");
                 tr.setAttribute("data-student-id", st.id);
-                // If hasRecord, use saved status; otherwise reset to "present"
-                const currentStatus = (hasRecord && dayRecord[st.id]) ? dayRecord[st.id] : "present";
+                const stDropped = isStudentDropped(st);
 
-                tr.innerHTML = `
-                    <td><strong>${escapeHtml(st.id)}</strong></td>
-                    <td>${escapeHtml(formatStudentName(st))}</td>
-                    <td>
-                        <select class="attendance-select" data-student-id="${escapeHtml(st.id)}">
-                            <option value="present" ${currentStatus === "present" ? "selected" : ""}>Present</option>
-                            <option value="late" ${currentStatus === "late" ? "selected" : ""}>Late</option>
-                            <option value="absent" ${currentStatus === "absent" ? "selected" : ""}>Absent</option>
-                        </select>
-                    </td>
-                `;
+                if (stDropped) {
+                    tr.classList.add("student-dropped-row");
+                    tr.innerHTML = `
+                        <td><strong>${escapeHtml(st.id)}</strong></td>
+                        <td>${escapeHtml(formatStudentName(st))}</td>
+                        <td>
+                            <span class="attendance-dropped-badge" title="Student is dropped - Attendance cannot be recorded">
+                                <i class="fa-solid fa-user-slash"></i> Dropped
+                            </span>
+                        </td>
+                    `;
+                } else {
+                    // If hasRecord, use saved status; otherwise reset to "present"
+                    const currentStatus = (hasRecord && dayRecord[st.id]) ? dayRecord[st.id] : "present";
+                    const disabledAttr = hasRecord ? "disabled" : "";
+
+                    tr.innerHTML = `
+                        <td><strong>${escapeHtml(st.id)}</strong></td>
+                        <td>${escapeHtml(formatStudentName(st))}</td>
+                        <td>
+                            <select class="attendance-select" data-student-id="${escapeHtml(st.id)}" ${disabledAttr}>
+                                <option value="present" ${currentStatus === "present" ? "selected" : ""}>Present</option>
+                                <option value="late" ${currentStatus === "late" ? "selected" : ""}>Late</option>
+                                <option value="absent" ${currentStatus === "absent" ? "selected" : ""}>Absent</option>
+                            </select>
+                        </td>
+                    `;
+                }
                 attendanceTableBody.appendChild(tr);
 
                 const selectEl = tr.querySelector(".attendance-select");
@@ -2932,14 +3346,13 @@ document.addEventListener("DOMContentLoaded", () => {
             });
         }
 
-        // Set default date: if teacher already recorded attendance, default to the most recent recorded date so they can review existing records; otherwise default to today's local date
-        const existingRecordedDates = Object.keys(attendanceMap).sort().reverse();
-        if (!attendanceDateInput.value) {
-            if (existingRecordedDates.length > 0) {
-                attendanceDateInput.value = existingRecordedDates[0];
-            } else {
-                attendanceDateInput.value = getTodayLocalDate();
-            }
+        // Set max date constraint to today (prevent future date selections)
+        const todayLocalStr = getTodayLocalDate();
+        attendanceDateInput.setAttribute("max", todayLocalStr);
+
+        // Default date selection: default to today (or clamp if somehow greater)
+        if (!attendanceDateInput.value || attendanceDateInput.value > todayLocalStr) {
+            attendanceDateInput.value = todayLocalStr;
         }
 
         // Load initial date
@@ -2947,7 +3360,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // When teacher picks or navigates any date using the date selector:
         attendanceDateInput.addEventListener("change", () => {
-            const chosenDate = attendanceDateInput.value;
+            let chosenDate = attendanceDateInput.value;
+            const todayStr = getTodayLocalDate();
+            if (chosenDate && chosenDate > todayStr) {
+                alert("Cannot record attendance for future dates. Setting date to today.");
+                attendanceDateInput.value = todayStr;
+                chosenDate = todayStr;
+            }
             if (chosenDate) {
                 loadAttendanceForDate(chosenDate);
             }
@@ -2980,7 +3399,18 @@ document.addEventListener("DOMContentLoaded", () => {
                     return;
                 }
 
-                const selects = attendanceTableBody.querySelectorAll(".attendance-select");
+                const todayStr = getTodayLocalDate();
+                if (dateKey > todayStr) {
+                    alert("Cannot record attendance for future dates.");
+                    return;
+                }
+
+                if (attendanceMap[dateKey]) {
+                    alert("Attendance for this date has already been saved and is locked.");
+                    return;
+                }
+
+                const selects = attendanceTableBody.querySelectorAll(".attendance-select:not([disabled])");
                 const dayStatusMap = {};
                 let lateCount = 0;
                 let absentCount = 0;
@@ -2993,6 +3423,14 @@ document.addEventListener("DOMContentLoaded", () => {
                     if (stVal === "absent") absentCount++;
                 });
 
+                // Enrolled students who are dropped
+                const activeEnrolled = getEnrolledStudentsForCourse(currentActiveCourse);
+                activeEnrolled.forEach(st => {
+                    if (isStudentDropped(st)) {
+                        dayStatusMap[st.id] = "dropped";
+                    }
+                });
+
                 // Save for this exact date key
                 attendanceMap[dateKey] = dayStatusMap;
                 saveAllAttendanceRecords();
@@ -3002,10 +3440,10 @@ document.addEventListener("DOMContentLoaded", () => {
                     window.TrackED_DB.saveAttendanceToCloud(currentActiveCourse, dateKey, dayStatusMap);
                 }
 
-                // Sync Late and Absent records into student portal attendance history for ALL enrolled students
-                const activeEnrolled = getEnrolledStudentsForCourse(currentActiveCourse);
+                // Sync Late and Absent records into student portal attendance history for ALL active enrolled students
                 const sortedDates = Object.keys(attendanceMap).sort().reverse();
                 activeEnrolled.forEach(st => {
+                    if (isStudentDropped(st)) return;
                     const stHistoryKey = `tracked_attendance_${currentActiveCourse.trim().toLowerCase()}_${st.id.trim().toLowerCase()}`;
                     const stHistoryRecords = [];
                     sortedDates.forEach(d => {
@@ -3026,7 +3464,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 sortedDates.forEach(d => {
                     const stMap = attendanceMap[d];
                     if (!stMap) return;
-                    enrolledStudents.forEach(st => {
+                    activeEnrolled.forEach(st => {
+                        if (isStudentDropped(st)) return;
                         const status = stMap[st.id] || stMap[st.id.toLowerCase()];
                         if (status === "late" || status === "absent") {
                             studentHistoryRecords.push({
@@ -3039,16 +3478,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 });
                 localStorage.setItem(studentHistoryKey, JSON.stringify(studentHistoryRecords));
 
-                // Update badge to Recorded
-                if (attendanceDateBadge) {
-                    attendanceDateBadge.className = "attendance-date-badge recorded";
-                    attendanceDateBadge.innerHTML = `<i class="fa-solid fa-circle-check"></i> Recorded`;
-                }
-
-                // Show success feedback
-                const origHtml = saveAttendanceBtn.innerHTML;
-                saveAttendanceBtn.innerHTML = `<i class="fa-solid fa-circle-check"></i> Attendance Saved!`;
-                saveAttendanceBtn.style.backgroundColor = "#059669";
+                // Immediately re-load for this date so all fields and buttons lock
+                loadAttendanceForDate(dateKey);
 
                 if (attendanceAlertBanner && attendanceAlertMsg) {
                     attendanceAlertBanner.className = "modal-alert success";
@@ -3056,13 +3487,8 @@ document.addEventListener("DOMContentLoaded", () => {
                     const summaryMsg = (lateCount === 0 && absentCount === 0)
                         ? "All students marked Present!"
                         : `Recorded: ${absentCount > 0 ? absentCount + " Absent" : ""}${absentCount > 0 && lateCount > 0 ? ", " : ""}${lateCount > 0 ? lateCount + " Late" : ""}`;
-                    attendanceAlertMsg.textContent = `Attendance for ${formatDisplayDate(dateKey)} saved successfully! (${summaryMsg})`;
+                    attendanceAlertMsg.textContent = `Attendance for ${formatDisplayDate(dateKey)} saved successfully! This record is now locked and cannot be edited. (${summaryMsg})`;
                 }
-
-                setTimeout(() => {
-                    saveAttendanceBtn.innerHTML = origHtml;
-                    saveAttendanceBtn.style.backgroundColor = "";
-                }, 2000);
             });
         }
     }

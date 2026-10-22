@@ -444,6 +444,37 @@ tbody tr:hover td {
     -moz-appearance: textfield;
 }
 
+.score-num-input:disabled {
+    cursor: not-allowed;
+    color: #64748b;
+}
+
+.score-input-wrap.locked {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+    cursor: not-allowed;
+}
+
+.score-input-wrap.dropped-student {
+    background: #fef2f2;
+    border-color: #fecaca;
+    cursor: not-allowed;
+}
+
+.score-input-wrap.dropped-student .score-num-input {
+    color: #dc2626;
+    font-size: 12px;
+    width: 60px;
+}
+
+.th-locked-badge {
+    color: #059669;
+    font-size: 13px;
+    margin-left: 6px;
+    display: inline-flex;
+    align-items: center;
+}
+
 .score-max-label {
     font-size: 13px;
     font-weight: 600;
@@ -753,6 +784,15 @@ tbody tr:hover td {
 
 .save-btn:active {
     transform: translateY(0);
+}
+
+.save-btn:disabled,
+.save-btn.btn-locked {
+    background: #94a3b8 !important;
+    cursor: not-allowed !important;
+    box-shadow: none !important;
+    transform: none !important;
+    opacity: 0.85;
 }
 
 /* =========================================

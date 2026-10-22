@@ -124,6 +124,7 @@ CREATE TABLE course_enrollments (
     enrollment_id SERIAL PRIMARY KEY,
     course_id INT NOT NULL REFERENCES courses(course_id) ON DELETE CASCADE,
     student_id VARCHAR(50) NOT NULL REFERENCES students(student_id) ON DELETE CASCADE,
+    remarks VARCHAR(20) DEFAULT 'Enrolled',
     enrolled_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     CONSTRAINT unique_course_student UNIQUE (course_id, student_id)
 );

@@ -409,6 +409,35 @@ tbody tr:hover td {
     background: #fbfcfe;
 }
 
+.remarks-select {
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1.5px solid #cbd5e1;
+    background-color: #ffffff;
+    outline: none;
+    transition: all 0.2s ease;
+}
+
+.remarks-select:focus {
+    box-shadow: 0 0 0 3px rgba(6, 6, 207, 0.15);
+}
+
+.remarks-select.remark-enrolled {
+    background-color: #ecfdf5;
+    color: #059669;
+    border-color: #a7f3d0;
+}
+
+.remarks-select.remark-drop {
+    background-color: #fef2f2;
+    color: #dc2626;
+    border-color: #fecaca;
+}
+
 .remove-btn {
     display: inline-flex;
     align-items: center;

@@ -1275,6 +1275,26 @@ const SUPABASE_CONFIG = {
             }
         },
 
+        updateEnrollmentRemarks: async function (courseName, studentId, remarks) {
+            const client = getClient();
+            if (!client || !courseName || !studentId) return false;
+            try {
+                const courseId = await this._getCourseId(courseName);
+                if (!courseId) return false;
+                const { error } = await client.from("course_enrollments").update({
+                    remarks: remarks
+                }).match({
+                    course_id: courseId,
+                    student_id: studentId.trim()
+                });
+                if (error) throw error;
+                console.log(`[TrackED Backend] Enrollment remarks for ${studentId} in ${courseName} updated to "${remarks}" in Supabase Cloud!`);
+                return true;
+            } catch (e) {
+                return false;
+            }
+        },
+
         /**
          * Fetch enrolled courses directly from Supabase Cloud for a given student ID
          */
@@ -1670,16 +1690,29 @@ const SUPABASE_CONFIG = {
                     const courseTidKey = (c.teacher_id || teacherId).toLowerCase().replace(/[^a-z0-9]/g, "_");
 
                     // Enrollments
-                    const { data: enrolls } = await client.from("course_enrollments").select("student_id").eq("course_id", c.course_id);
+                    const { data: enrolls } = await client.from("course_enrollments").select("*").eq("course_id", c.course_id);
                     if (enrolls) {
+                        let existingList = [];
+                        try {
+                            existingList = JSON.parse(localStorage.getItem(`tracked_enrolled_${courseTidKey}_${cName}`) || "[]");
+                        } catch(e) {}
+                        const existingRemarkMap = {};
+                        if (Array.isArray(existingList)) {
+                            existingList.forEach(st => {
+                                if (st && st.id) existingRemarkMap[st.id.trim().toLowerCase()] = st.remarks || st.status;
+                            });
+                        }
+
                         const enrolledStudents = enrolls.map(e => {
                             const stMatch = (dbStudents || []).find(s => (s.student_id || "").trim().toLowerCase() === (e.student_id || "").trim().toLowerCase());
+                            const sidLower = (e.student_id || "").trim().toLowerCase();
                             return {
                                 id: e.student_id,
                                 name: stMatch ? stMatch.name : e.student_id,
                                 firstName: stMatch ? (stMatch.first_name || "") : "",
                                 middleName: stMatch ? (stMatch.middle_name || "") : "",
-                                lastName: stMatch ? (stMatch.last_name || "") : ""
+                                lastName: stMatch ? (stMatch.last_name || "") : "",
+                                remarks: e.remarks || existingRemarkMap[sidLower] || "Enrolled"
                             };
                         });
                         localStorage.setItem(`tracked_enrolled_${courseTidKey}_${cName}`, JSON.stringify(enrolledStudents));
