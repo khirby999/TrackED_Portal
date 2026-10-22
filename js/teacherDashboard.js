@@ -53,6 +53,41 @@ document.addEventListener("DOMContentLoaded", () => {
         return dateStr;
     }
 
+    function getDayOfWeek(dateStr) {
+        if (!dateStr) return -1;
+        const parts = String(dateStr).trim().split("-");
+        if (parts.length !== 3) return -1;
+        const y = parseInt(parts[0], 10);
+        const m = parseInt(parts[1], 10) - 1;
+        const d = parseInt(parts[2], 10);
+        const dt = new Date(y, m, d);
+        return dt.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+    }
+
+    function isSaturday(dateStr) {
+        return getDayOfWeek(dateStr) === 6;
+    }
+
+    function isSunday(dateStr) {
+        return getDayOfWeek(dateStr) === 0;
+    }
+
+    function getLatestValidClassDate(referenceDateStr) {
+        let baseStr = referenceDateStr || getTodayLocalDate();
+        let parts = baseStr.split("-");
+        if (parts.length !== 3) return getTodayLocalDate();
+        let dt = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+        if (dt.getDay() === 6) {
+            dt.setDate(dt.getDate() - 1); // Saturday -> Friday
+        } else if (dt.getDay() === 0) {
+            dt.setDate(dt.getDate() - 2); // Sunday -> Friday
+        }
+        const y = dt.getFullYear();
+        const m = String(dt.getMonth() + 1).padStart(2, "0");
+        const d = String(dt.getDate()).padStart(2, "0");
+        return `${y}-${m}-${d}`;
+    }
+
     function getCourseCreationDate(cName) {
         if (!cName) return getTodayLocalDate();
         const cleanName = cName.trim();
@@ -3950,6 +3985,30 @@ document.addEventListener("DOMContentLoaded", () => {
                 dateStr = todayStr;
                 attendanceDateInput.value = todayStr;
             }
+            // Prevent recording on Saturday/Sunday (no Saturday classes)
+            if (isSaturday(dateStr)) {
+                const validDate = getLatestValidClassDate(dateStr);
+                if (validDate >= courseMinDate) {
+                    alert("Cannot record attendance on Saturday as there are no Saturday classes. Selecting most recent class date (Friday).");
+                    dateStr = validDate;
+                    attendanceDateInput.value = validDate;
+                } else {
+                    alert("Cannot record attendance on Saturday as there are no Saturday classes.");
+                    dateStr = courseMinDate;
+                    attendanceDateInput.value = courseMinDate;
+                }
+            } else if (isSunday(dateStr)) {
+                const validDate = getLatestValidClassDate(dateStr);
+                if (validDate >= courseMinDate) {
+                    alert("Cannot record attendance on Sunday as there are no Sunday classes. Selecting most recent class date (Friday).");
+                    dateStr = validDate;
+                    attendanceDateInput.value = validDate;
+                } else {
+                    alert("Cannot record attendance on Sunday as there are no Sunday classes.");
+                    dateStr = courseMinDate;
+                    attendanceDateInput.value = courseMinDate;
+                }
+            }
 
             attendanceMap = getAllAttendanceRecords();
             const enrolledStudents = getEnrolledStudentsForCourse(currentActiveCourse);
@@ -4067,11 +4126,15 @@ document.addEventListener("DOMContentLoaded", () => {
         attendanceDateInput.setAttribute("min", courseMinDate);
         attendanceDateInput.setAttribute("max", todayLocalStr);
 
-        // Default date selection: default to today (or clamp if somehow greater or less)
+        // Default date selection: default to today (or Friday if today is Saturday/Sunday)
+        const initialValidDate = getLatestValidClassDate(todayLocalStr);
         if (!attendanceDateInput.value || attendanceDateInput.value > todayLocalStr) {
-            attendanceDateInput.value = todayLocalStr;
+            attendanceDateInput.value = initialValidDate >= courseMinDate ? initialValidDate : courseMinDate;
         } else if (attendanceDateInput.value < courseMinDate) {
             attendanceDateInput.value = courseMinDate;
+        } else if (isSaturday(attendanceDateInput.value) || isSunday(attendanceDateInput.value)) {
+            const v = getLatestValidClassDate(attendanceDateInput.value);
+            attendanceDateInput.value = v >= courseMinDate ? v : courseMinDate;
         }
 
         // Load initial date
@@ -4093,6 +4156,29 @@ document.addEventListener("DOMContentLoaded", () => {
                 attendanceDateInput.value = maxD;
                 chosenDate = maxD;
             }
+            if (isSaturday(chosenDate)) {
+                const validDate = getLatestValidClassDate(chosenDate);
+                if (validDate >= minD) {
+                    alert("Cannot record attendance on Saturday as there are no Saturday classes. Selecting most recent class date (Friday).");
+                    chosenDate = validDate;
+                    attendanceDateInput.value = validDate;
+                } else {
+                    alert("Cannot record attendance on Saturday as there are no Saturday classes.");
+                    chosenDate = minD;
+                    attendanceDateInput.value = minD;
+                }
+            } else if (isSunday(chosenDate)) {
+                const validDate = getLatestValidClassDate(chosenDate);
+                if (validDate >= minD) {
+                    alert("Cannot record attendance on Sunday as there are no Sunday classes. Selecting most recent class date (Friday).");
+                    chosenDate = validDate;
+                    attendanceDateInput.value = validDate;
+                } else {
+                    alert("Cannot record attendance on Sunday as there are no Sunday classes.");
+                    chosenDate = minD;
+                    attendanceDateInput.value = minD;
+                }
+            }
             loadAttendanceForDate(chosenDate);
         });
 
@@ -4102,6 +4188,23 @@ document.addEventListener("DOMContentLoaded", () => {
             todayDateBtn.addEventListener("click", () => {
                 activeAttendanceDraft = {};
                 const todayStr = getTodayLocalDate();
+                const courseMin = getCourseCreationDate(currentActiveCourse);
+                if (isSaturday(todayStr)) {
+                    const validDate = getLatestValidClassDate(todayStr);
+                    const targetDate = validDate >= courseMin ? validDate : courseMin;
+                    alert("Today is Saturday. There are no Saturday classes, so displaying most recent class date.");
+                    attendanceDateInput.value = targetDate;
+                    loadAttendanceForDate(targetDate);
+                    return;
+                }
+                if (isSunday(todayStr)) {
+                    const validDate = getLatestValidClassDate(todayStr);
+                    const targetDate = validDate >= courseMin ? validDate : courseMin;
+                    alert("Today is Sunday. There are no Sunday classes, so displaying most recent class date.");
+                    attendanceDateInput.value = targetDate;
+                    loadAttendanceForDate(targetDate);
+                    return;
+                }
                 attendanceDateInput.value = todayStr;
                 loadAttendanceForDate(todayStr);
             });
@@ -4191,6 +4294,14 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
                 if (dateKey > todayStr) {
                     alert("Cannot record attendance for future dates.");
+                    return;
+                }
+                if (isSaturday(dateKey)) {
+                    alert("Cannot record attendance on Saturday as there are no Saturday classes.");
+                    return;
+                }
+                if (isSunday(dateKey)) {
+                    alert("Cannot record attendance on Sunday as there are no Sunday classes.");
                     return;
                 }
 
