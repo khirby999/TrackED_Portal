@@ -106,8 +106,7 @@ document.addEventListener("DOMContentLoaded", () => {
         courseName,
         instructorName,
         headers,
-        rows,
-        summary
+        rows
     }) {
         const displayDate = formatDisplayDate(dateStr) || dateStr || getTodayLocalDate();
         const fullCourse = `${courseCode ? escapeHtml(courseCode) + " - " : ""}${escapeHtml(courseName || "Course")}`;
@@ -116,8 +115,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const thCells = headers.map(h => `<th>${escapeHtml(h)}</th>`).join("");
         const trRows = rows.map(r => {
             return `<tr>${r.map((cell, idx) => {
-                // If cell is raw HTML (contains <span), render directly; else escape
-                const isHtml = typeof cell === "string" && cell.includes("<span");
+                const isHtml = typeof cell === "string" && (cell.includes("<span") || cell.includes("<strong"));
                 const alignClass = idx === 0 ? " class='text-center'" : "";
                 return `<td${alignClass}>${isHtml ? cell : escapeHtml(cell)}</td>`;
             }).join("")}</tr>`;
@@ -146,18 +144,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 margin-bottom: 16px;
             }
             .report-header .inst-title {
-                font-size: 18px;
+                font-size: 19px;
                 font-weight: 800;
                 letter-spacing: 1.5px;
                 text-transform: uppercase;
                 color: #1e3a8a;
                 margin: 0;
-            }
-            .report-header .sub-title {
-                font-size: 13px;
-                font-weight: 600;
-                color: #475569;
-                margin: 3px 0 0;
             }
             .report-header .doc-title {
                 font-size: 15px;
@@ -245,9 +237,7 @@ document.addEventListener("DOMContentLoaded", () => {
             .badge-absent  { background: #fee2e2; color: #dc2626; }
             .badge-dropped { background: #f1f5f9; color: #64748b; }
             .badge-score   { font-weight: 700; color: #1e3a8a; }
-            .summary-bar {
-                display: flex;
-                justify-content: space-between;
+            .date-bar {
                 font-size: 12px;
                 font-weight: 600;
                 color: #334155;
@@ -283,11 +273,14 @@ document.addEventListener("DOMContentLoaded", () => {
             @media print {
                 @page {
                     size: letter portrait;
-                    margin: 10mm;
+                    margin: 0;
                 }
                 body {
-                    padding: 0;
+                    margin: 0;
+                    padding: 15mm 18mm;
                     background: #ffffff;
+                    -webkit-print-color-adjust: exact;
+                    print-color-adjust: exact;
                 }
                 .no-print {
                     display: none !important;
@@ -298,7 +291,6 @@ document.addEventListener("DOMContentLoaded", () => {
         const reportContentInner = `
             <div class="report-header">
                 <h1 class="inst-title">TrackED Academic Portal</h1>
-                <div class="sub-title">College of Engineering &amp; Technology • Official Academic Record</div>
                 <div class="doc-title">${escapeHtml(reportTitle)}</div>
             </div>
 
@@ -356,9 +348,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 </tbody>
             </table>
 
-            <div class="summary-bar">
-                <span>${escapeHtml(summary || "")}</span>
-                <span>Printed On: ${new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
+            <div class="date-bar">
+                <span>Date: ${displayDate}</span>
             </div>
 
             <div class="signature-block">
@@ -369,8 +360,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 </div>
                 <div class="signature-box">
                     <div class="sig-line"></div>
-                    <div class="sig-name">Department Head / Dean</div>
-                    <div class="sig-role">Dean of Engineering &amp; Technology</div>
+                    <div class="sig-role" style="font-weight: 700; font-size: 13px; color: #0f172a; margin-top: 6px;">Dean of Engineering and Architecture</div>
                 </div>
             </div>
         `;
@@ -388,7 +378,7 @@ document.addEventListener("DOMContentLoaded", () => {
   <div class="no-print" style="position: sticky; top: 0; background: #1e3a8a; color: #ffffff; padding: 12px 24px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 14px rgba(0,0,0,0.2); z-index: 10000; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: -24px -24px 20px -24px;">
     <div style="display: flex; align-items: center; gap: 10px;">
       <span style="font-size: 16px;">📄</span>
-      <span style="font-size: 14px; font-weight: 600;">TrackED Report Ready • In print destination, select <strong>"Save as PDF"</strong> to save file</span>
+      <span style="font-size: 14px; font-weight: 600;">TrackED Report • Select <strong>"Save as PDF"</strong> in destination</span>
     </div>
     <div style="display: flex; gap: 10px;">
       <button onclick="window.print()" style="background: #10b981; color: #ffffff; border: none; padding: 9px 20px; border-radius: 6px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
@@ -2575,51 +2565,36 @@ document.addEventListener("DOMContentLoaded", () => {
             let totalScoreSum = 0;
             let droppedCount = 0;
 
-            const rows = sorted.map((st, idx) => {
+            const rows = sorted.map((st) => {
                 const stDropped = isStudentDropped(st);
                 let scoreDisplay = "";
-                let remarksBadge = "";
                 if (stDropped) {
-                    droppedCount++;
-                    scoreDisplay = `<span style="color: #94a3b8;">-</span>`;
-                    remarksBadge = `<span class="badge badge-dropped">Dropped</span>`;
+                    scoreDisplay = `<span style="color: #94a3b8;">Dropped</span>`;
                 } else {
                     const stScores = currentScores[st.id] || {};
                     const val = stScores[act.num];
                     if (val !== undefined && val !== null && val !== "") {
-                        totalRecorded++;
-                        totalScoreSum += Number(val);
                         scoreDisplay = `<span class="badge-score">${val} / ${act.maxScore}</span>`;
-                        remarksBadge = Number(val) >= (act.maxScore * 0.75) 
-                            ? `<span class="badge badge-present">Passed</span>` 
-                            : `<span class="badge badge-absent">Needs Improvement</span>`;
                     } else {
                         scoreDisplay = `0 / ${act.maxScore}`;
-                        remarksBadge = `<span class="badge badge-absent">No Submission</span>`;
                     }
                 }
                 return [
-                    idx + 1,
                     escapeHtml(st.id),
                     escapeHtml(formatStudentName(st)),
-                    scoreDisplay,
-                    remarksBadge
+                    scoreDisplay
                 ];
             });
 
-            const avgScore = totalRecorded > 0 ? (totalScoreSum / totalRecorded).toFixed(1) : "0";
-            const summary = `Total Enrolled: ${sorted.length} | Recorded: ${totalRecorded} | Dropped: ${droppedCount} | Class Average: ${avgScore} / ${act.maxScore}`;
-
             printAcademicReport({
-                reportTitle: "Student Activity Scores Record",
+                reportTitle: "Student Activity Score Record",
                 assessmentName: `${act.name} (Max Score: ${act.maxScore} pts)`,
                 dateStr: getTodayLocalDate(),
-                courseCode: currentActiveCourseCode || localStorage.getItem("tracked_selected_course_code") || "",
+                courseCode: currentActiveCourseCode || "",
                 courseName: currentActiveCourse,
                 instructorName: currentTeacherName,
-                headers: ["#", "Student ID", "Student Name", "Score", "Remarks"],
-                rows: rows,
-                summary: summary
+                headers: ["Student ID", "Student Name", "Score"],
+                rows: rows
             });
         }
 
@@ -3198,51 +3173,36 @@ document.addEventListener("DOMContentLoaded", () => {
             let totalScoreSum = 0;
             let droppedCount = 0;
 
-            const rows = sorted.map((st, idx) => {
+            const rows = sorted.map((st) => {
                 const stDropped = isStudentDropped(st);
                 let scoreDisplay = "";
-                let remarksBadge = "";
                 if (stDropped) {
-                    droppedCount++;
-                    scoreDisplay = `<span style="color: #94a3b8;">-</span>`;
-                    remarksBadge = `<span class="badge badge-dropped">Dropped</span>`;
+                    scoreDisplay = `<span style="color: #94a3b8;">Dropped</span>`;
                 } else {
                     const stScores = currentScores[st.id] || {};
                     const val = stScores[quiz.num];
                     if (val !== undefined && val !== null && val !== "") {
-                        totalRecorded++;
-                        totalScoreSum += Number(val);
                         scoreDisplay = `<span class="badge-score">${val} / ${quiz.maxScore}</span>`;
-                        remarksBadge = Number(val) >= (quiz.maxScore * 0.75) 
-                            ? `<span class="badge badge-present">Passed</span>` 
-                            : `<span class="badge badge-absent">Needs Improvement</span>`;
                     } else {
                         scoreDisplay = `0 / ${quiz.maxScore}`;
-                        remarksBadge = `<span class="badge badge-absent">No Submission</span>`;
                     }
                 }
                 return [
-                    idx + 1,
                     escapeHtml(st.id),
                     escapeHtml(formatStudentName(st)),
-                    scoreDisplay,
-                    remarksBadge
+                    scoreDisplay
                 ];
             });
 
-            const avgScore = totalRecorded > 0 ? (totalScoreSum / totalRecorded).toFixed(1) : "0";
-            const summary = `Total Enrolled: ${sorted.length} | Recorded: ${totalRecorded} | Dropped: ${droppedCount} | Class Average: ${avgScore} / ${quiz.maxScore}`;
-
             printAcademicReport({
-                reportTitle: "Student Quiz Scores Record",
+                reportTitle: "Student Quiz Score Record",
                 assessmentName: `${quiz.name} (Max Score: ${quiz.maxScore} pts)`,
                 dateStr: getTodayLocalDate(),
-                courseCode: currentActiveCourseCode || localStorage.getItem("tracked_selected_course_code") || "",
+                courseCode: currentActiveCourseCode || "",
                 courseName: currentActiveCourse,
                 instructorName: currentTeacherName,
-                headers: ["#", "Student ID", "Student Name", "Score", "Remarks"],
-                rows: rows,
-                summary: summary
+                headers: ["Student ID", "Student Name", "Score"],
+                rows: rows
             });
         }
 
@@ -3821,51 +3781,36 @@ document.addEventListener("DOMContentLoaded", () => {
             let totalScoreSum = 0;
             let droppedCount = 0;
 
-            const rows = sorted.map((st, idx) => {
+            const rows = sorted.map((st) => {
                 const stDropped = isStudentDropped(st);
                 let scoreDisplay = "";
-                let remarksBadge = "";
                 if (stDropped) {
-                    droppedCount++;
-                    scoreDisplay = `<span style="color: #94a3b8;">-</span>`;
-                    remarksBadge = `<span class="badge badge-dropped">Dropped</span>`;
+                    scoreDisplay = `<span style="color: #94a3b8;">Dropped</span>`;
                 } else {
                     const stScores = currentScores[st.id] || {};
                     const val = stScores[exam.num];
                     if (val !== undefined && val !== null && val !== "") {
-                        totalRecorded++;
-                        totalScoreSum += Number(val);
                         scoreDisplay = `<span class="badge-score">${val} / ${exam.maxScore}</span>`;
-                        remarksBadge = Number(val) >= (exam.maxScore * 0.75) 
-                            ? `<span class="badge badge-present">Passed</span>` 
-                            : `<span class="badge badge-absent">Needs Improvement</span>`;
                     } else {
                         scoreDisplay = `0 / ${exam.maxScore}`;
-                        remarksBadge = `<span class="badge badge-absent">No Submission</span>`;
                     }
                 }
                 return [
-                    idx + 1,
                     escapeHtml(st.id),
                     escapeHtml(formatStudentName(st)),
-                    scoreDisplay,
-                    remarksBadge
+                    scoreDisplay
                 ];
             });
 
-            const avgScore = totalRecorded > 0 ? (totalScoreSum / totalRecorded).toFixed(1) : "0";
-            const summary = `Total Enrolled: ${sorted.length} | Recorded: ${totalRecorded} | Dropped: ${droppedCount} | Class Average: ${avgScore} / ${exam.maxScore}`;
-
             printAcademicReport({
-                reportTitle: "Student Exam Scores Record",
+                reportTitle: "Student Exam Score Record",
                 assessmentName: `${exam.name} (Max Score: ${exam.maxScore} pts)`,
                 dateStr: getTodayLocalDate(),
-                courseCode: currentActiveCourseCode || localStorage.getItem("tracked_selected_course_code") || "",
+                courseCode: currentActiveCourseCode || "",
                 courseName: currentActiveCourse,
                 instructorName: currentTeacherName,
-                headers: ["#", "Student ID", "Student Name", "Score", "Remarks"],
-                rows: rows,
-                summary: summary
+                headers: ["Student ID", "Student Name", "Score"],
+                rows: rows
             });
         }
 
@@ -3986,6 +3931,8 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         }
 
+        let activeAttendanceDraft = {};
+
         // Render attendance table for a given date
         function loadAttendanceForDate(dateStr) {
             const courseMinDate = getCourseCreationDate(currentActiveCourse);
@@ -4024,7 +3971,7 @@ document.addEventListener("DOMContentLoaded", () => {
             if (attendanceAlertBanner && attendanceAlertMsg) {
                 if (hasRecord) {
                     attendanceAlertBanner.className = "modal-alert info";
-                    attendanceAlertBanner.style.display = "flex";
+                    attendanceAlertBanner.display = "flex";
                     attendanceAlertMsg.textContent = `Attendance for ${formatDisplayDate(dateStr)} has been recorded and locked. It cannot be edited.`;
                 } else {
                     attendanceAlertBanner.style.display = "none";
@@ -4083,8 +4030,10 @@ document.addEventListener("DOMContentLoaded", () => {
                         </td>
                     `;
                 } else {
-                    // If hasRecord, use saved status; otherwise DEFAULT TO ABSENT as requested
-                    const currentStatus = (hasRecord && dayRecord[st.id]) ? dayRecord[st.id] : "absent";
+                    // If hasRecord, use saved status; otherwise use active draft selection or default to absent
+                    const currentStatus = hasRecord 
+                        ? (dayRecord[st.id] || "absent") 
+                        : (activeAttendanceDraft[st.id] || "absent");
                     const disabledAttr = hasRecord ? "disabled" : "";
 
                     tr.innerHTML = `
@@ -4106,6 +4055,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     updateSelectStatusClass(selectEl);
                     selectEl.addEventListener("change", () => {
                         updateSelectStatusClass(selectEl);
+                        activeAttendanceDraft[st.id] = selectEl.value;
                     });
                 }
             });
@@ -4129,6 +4079,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // When teacher picks or navigates any date using the date selector:
         attendanceDateInput.addEventListener("change", () => {
+            activeAttendanceDraft = {};
             let chosenDate = attendanceDateInput.value;
             if (!chosenDate) return;
             const minD = getCourseCreationDate(currentActiveCourse);
@@ -4149,17 +4100,21 @@ document.addEventListener("DOMContentLoaded", () => {
         const todayDateBtn = document.getElementById("todayDateBtn");
         if (todayDateBtn) {
             todayDateBtn.addEventListener("click", () => {
+                activeAttendanceDraft = {};
                 const todayStr = getTodayLocalDate();
                 attendanceDateInput.value = todayStr;
                 loadAttendanceForDate(todayStr);
             });
         }
 
-        // Reactive cloud sync listener
+        // Reactive cloud sync listener (preserves unsaved active draft)
         window.addEventListener("tracked_sync_completed", () => {
             attendanceMap = getAllAttendanceRecords();
             if (attendanceDateInput && attendanceDateInput.value) {
-                loadAttendanceForDate(attendanceDateInput.value);
+                const dateKey = attendanceDateInput.value;
+                if (attendanceMap[dateKey]) {
+                    loadAttendanceForDate(dateKey);
+                }
             }
         });
 
@@ -4175,57 +4130,44 @@ document.addEventListener("DOMContentLoaded", () => {
             const activeEnrolled = getEnrolledStudentsForCourse(currentActiveCourse);
             const sorted = [...activeEnrolled].sort((a, b) => studentSortKey(a).localeCompare(studentSortKey(b)));
 
-            let presentCount = 0;
-            let lateCount = 0;
-            let absentCount = 0;
-            let droppedCount = 0;
-
-            const rows = sorted.map((st, idx) => {
+            const rows = sorted.map((st) => {
                 const stDropped = isStudentDropped(st);
                 let statusBadge = "";
                 if (stDropped) {
-                    droppedCount++;
                     statusBadge = `<span class="badge badge-dropped">Dropped</span>`;
                 } else {
                     let stStatus = "absent";
                     if (isSaved) {
                         stStatus = dayRecord[st.id] || "absent";
                     } else {
-                        const selectEl = document.querySelector(`.attendance-status-select[data-student-id="${st.id}"]`);
-                        stStatus = selectEl ? selectEl.value : (dayRecord[st.id] || "absent");
+                        const selectEl = document.querySelector(`.attendance-select[data-student-id="${st.id}"]`);
+                        stStatus = selectEl ? selectEl.value : (activeAttendanceDraft[st.id] || dayRecord[st.id] || "absent");
                     }
 
                     if (stStatus === "present") {
-                        presentCount++;
                         statusBadge = `<span class="badge badge-present">Present</span>`;
                     } else if (stStatus === "late") {
-                        lateCount++;
                         statusBadge = `<span class="badge badge-late">Late</span>`;
                     } else {
-                        absentCount++;
                         statusBadge = `<span class="badge badge-absent">Absent</span>`;
                     }
                 }
                 return [
-                    idx + 1,
                     escapeHtml(st.id),
                     escapeHtml(formatStudentName(st)),
                     statusBadge
                 ];
             });
 
-            const summary = `Total Enrolled: ${sorted.length} | Present: ${presentCount} | Late: ${lateCount} | Absent: ${absentCount} | Dropped: ${droppedCount}`;
-
             printAcademicReport({
-                reportTitle: isSaved ? "Student Attendance Record" : "Student Attendance Record (Draft / In-Progress)",
+                reportTitle: "Student Attendance Record",
                 assessmentName: null,
                 dateStr: dateKey,
-                courseCode: currentActiveCourseCode || localStorage.getItem("tracked_selected_course_code") || "",
+                courseCode: currentActiveCourseCode || "",
                 courseName: currentActiveCourse,
                 instructorName: currentTeacherName,
-                headers: ["#", "Student ID", "Student Name", "Attendance Status"],
-                rows: rows,
-                summary: summary
+                headers: ["Student ID", "Student Name", "Attendance Status"],
+                rows: rows
             });
         }
 
@@ -4325,7 +4267,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 });
                 localStorage.setItem(studentHistoryKey, JSON.stringify(studentHistoryRecords));
 
-                // Immediately re-load for this date so all fields and buttons lock
+                // Clear working draft and immediately re-load for this date so all fields and buttons lock
+                activeAttendanceDraft = {};
                 loadAttendanceForDate(dateKey);
 
                 if (attendanceAlertBanner && attendanceAlertMsg) {
