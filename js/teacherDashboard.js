@@ -97,6 +97,50 @@ document.addEventListener("DOMContentLoaded", () => {
         return todayStr;
     }
 
+    // Lightweight toast notification for PDF feedback
+    function showPdfToast(msg, type = "info") {
+        let toast = document.getElementById("tracked_pdf_toast");
+        if (!toast) {
+            toast = document.createElement("div");
+            toast.id = "tracked_pdf_toast";
+            toast.style.position = "fixed";
+            toast.style.top = "24px";
+            toast.style.right = "24px";
+            toast.style.zIndex = "999999";
+            toast.style.padding = "14px 22px";
+            toast.style.borderRadius = "10px";
+            toast.style.fontSize = "14px";
+            toast.style.fontWeight = "600";
+            toast.style.display = "flex";
+            toast.style.alignItems = "center";
+            toast.style.gap = "10px";
+            toast.style.boxShadow = "0 10px 30px rgba(0,0,0,0.25)";
+            toast.style.transition = "opacity 0.3s ease, transform 0.3s ease";
+            document.body.appendChild(toast);
+        }
+        const colors = {
+            info:    { bg: "#1e3a8a", text: "#ffffff", icon: '<i class="fa-solid fa-spinner fa-spin"></i>' },
+            success: { bg: "#059669", text: "#ffffff", icon: '<i class="fa-solid fa-circle-check"></i>' },
+            warning: { bg: "#d97706", text: "#ffffff", icon: '<i class="fa-solid fa-triangle-exclamation"></i>' },
+            error:   { bg: "#dc2626", text: "#ffffff", icon: '<i class="fa-solid fa-circle-xmark"></i>' }
+        };
+        const c = colors[type] || colors.info;
+        toast.style.backgroundColor = c.bg;
+        toast.style.color = c.text;
+        toast.innerHTML = `${c.icon} <span>${escapeHtml(msg)}</span>`;
+        toast.style.opacity = "1";
+        toast.style.transform = "translateY(0)";
+
+        if (type !== "info") {
+            setTimeout(() => {
+                if (toast) {
+                    toast.style.opacity = "0";
+                    toast.style.transform = "translateY(-10px)";
+                }
+            }, 4000);
+        }
+    }
+
     // Shared PDF / Printable Academic Report Generator
     function printAcademicReport({
         reportTitle,
@@ -123,277 +167,293 @@ document.addEventListener("DOMContentLoaded", () => {
             }).join("")}</tr>`;
         }).join("");
 
-        const printHtml = `<!DOCTYPE html>
+        const reportStyles = `
+            * { box-sizing: border-box; }
+            .report-container {
+                width: 780px;
+                padding: 24px 28px;
+                background: #ffffff;
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+                color: #0f172a;
+                font-size: 13px;
+                line-height: 1.4;
+                box-sizing: border-box;
+            }
+            .report-header {
+                text-align: center;
+                border-bottom: 2px solid #1e3a8a;
+                padding-bottom: 12px;
+                margin-bottom: 16px;
+            }
+            .report-header .inst-title {
+                font-size: 18px;
+                font-weight: 800;
+                letter-spacing: 1.5px;
+                text-transform: uppercase;
+                color: #1e3a8a;
+                margin: 0;
+            }
+            .report-header .sub-title {
+                font-size: 13px;
+                font-weight: 600;
+                color: #475569;
+                margin: 3px 0 0;
+            }
+            .report-header .doc-title {
+                font-size: 15px;
+                font-weight: 700;
+                color: #0f172a;
+                margin: 6px 0 0;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            .report-meta-box {
+                margin-bottom: 16px;
+                border: 1px solid #cbd5e1;
+                border-radius: 6px;
+                padding: 12px 16px;
+                background: #f8fafc;
+            }
+            .meta-row {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 8px;
+            }
+            .meta-row:last-child {
+                margin-bottom: 0;
+            }
+            .meta-item {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                font-size: 13px;
+            }
+            .meta-label {
+                font-weight: 700;
+                color: #334155;
+                text-transform: uppercase;
+                font-size: 11px;
+                letter-spacing: 0.5px;
+            }
+            .meta-val {
+                font-weight: 600;
+                color: #0f172a;
+            }
+            .meta-line {
+                display: inline-block;
+                border-bottom: 1.5px solid #334155;
+                min-width: 170px;
+                height: 14px;
+            }
+            table.report-table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-top: 8px;
+                margin-bottom: 16px;
+            }
+            table.report-table th, table.report-table td {
+                border: 1px solid #94a3b8;
+                padding: 7px 10px;
+                font-size: 12px;
+                text-align: left;
+            }
+            table.report-table th {
+                background: #1e3a8a;
+                color: #ffffff;
+                font-weight: 700;
+                text-transform: uppercase;
+                font-size: 11px;
+                letter-spacing: 0.5px;
+            }
+            table.report-table tr:nth-child(even) td {
+                background: #f8fafc;
+            }
+            .text-center {
+                text-align: center;
+            }
+            .badge {
+                display: inline-block;
+                padding: 2px 8px;
+                border-radius: 4px;
+                font-size: 11px;
+                font-weight: 700;
+                text-transform: uppercase;
+            }
+            .badge-present { background: #dcfce7; color: #15803d; }
+            .badge-late    { background: #fef3c7; color: #b45309; }
+            .badge-absent  { background: #fee2e2; color: #dc2626; }
+            .badge-dropped { background: #f1f5f9; color: #64748b; }
+            .badge-score   { font-weight: 700; color: #1e3a8a; }
+            .summary-bar {
+                display: flex;
+                justify-content: space-between;
+                font-size: 12px;
+                font-weight: 600;
+                color: #334155;
+                padding: 8px 12px;
+                background: #f1f5f9;
+                border: 1px solid #e2e8f0;
+                border-radius: 4px;
+                margin-bottom: 30px;
+            }
+            .signature-block {
+                display: flex;
+                justify-content: space-between;
+                margin-top: 40px;
+                page-break-inside: avoid;
+            }
+            .signature-box {
+                width: 250px;
+                text-align: center;
+            }
+            .sig-line {
+                border-bottom: 1.5px solid #0f172a;
+                margin-bottom: 6px;
+                height: 40px;
+            }
+            .sig-name {
+                font-weight: 700;
+                font-size: 13px;
+            }
+            .sig-role {
+                font-size: 11px;
+                color: #64748b;
+            }
+        `;
+
+        const reportContentInner = `
+            <div class="report-header">
+                <h1 class="inst-title">TrackED Academic Portal</h1>
+                <div class="sub-title">College of Engineering &amp; Technology • Official Academic Record</div>
+                <div class="doc-title">${escapeHtml(reportTitle)}</div>
+            </div>
+
+            <div class="report-meta-box">
+                <div class="meta-row">
+                    <div class="meta-item">
+                        <span class="meta-label">Date:</span>
+                        <span class="meta-val">${displayDate}</span>
+                    </div>
+                    ${assessmentName ? `
+                    <div class="meta-item">
+                        <span class="meta-label">Assessment:</span>
+                        <span class="meta-val">${escapeHtml(assessmentName)}</span>
+                    </div>` : `
+                    <div class="meta-item">
+                        <span class="meta-label">Course:</span>
+                        <span class="meta-val">${fullCourse}</span>
+                    </div>`}
+                </div>
+
+                <div class="meta-row">
+                    <div class="meta-item">
+                        <span class="meta-label">Instructor Name:</span>
+                        <span class="meta-val">${teacherNameText}</span>
+                    </div>
+                    ${assessmentName ? `
+                    <div class="meta-item">
+                        <span class="meta-label">Course:</span>
+                        <span class="meta-val">${fullCourse}</span>
+                    </div>` : `
+                    <div class="meta-item">
+                        <span class="meta-label">Record Type:</span>
+                        <span class="meta-val">Daily Class Attendance</span>
+                    </div>`}
+                </div>
+
+                <div class="meta-row">
+                    <div class="meta-item">
+                        <span class="meta-label">Program:</span>
+                        <span class="meta-line"></span>
+                    </div>
+                    <div class="meta-item">
+                        <span class="meta-label">Year Level:</span>
+                        <span class="meta-line"></span>
+                    </div>
+                </div>
+            </div>
+
+            <table class="report-table">
+                <thead>
+                    <tr>${thCells}</tr>
+                </thead>
+                <tbody>
+                    ${trRows}
+                </tbody>
+            </table>
+
+            <div class="summary-bar">
+                <span>${escapeHtml(summary || "")}</span>
+                <span>Printed On: ${new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
+            </div>
+
+            <div class="signature-block">
+                <div class="signature-box">
+                    <div class="sig-line"></div>
+                    <div class="sig-name">${teacherNameText}</div>
+                    <div class="sig-role">Instructor Signature over Printed Name</div>
+                </div>
+                <div class="signature-box">
+                    <div class="sig-line"></div>
+                    <div class="sig-name">Department Head / Dean</div>
+                    <div class="sig-role">Dean of Engineering &amp; Technology</div>
+                </div>
+            </div>
+        `;
+
+        const fullPrintableHtml = `<!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
 <title>${escapeHtml(reportTitle)} - ${fullCourse}</title>
 <style>
-  @page {
-    size: letter portrait;
-    margin: 15mm 15mm 15mm 15mm;
-  }
-  * {
-    box-sizing: border-box;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    color: #0f172a;
-  }
-  body {
-    margin: 0;
-    padding: 24px;
-    background: #ffffff;
-    font-size: 13px;
-    line-height: 1.4;
-  }
-  .report-header {
-    text-align: center;
-    border-bottom: 2px solid #1e3a8a;
-    padding-bottom: 12px;
-    margin-bottom: 16px;
-  }
-  .report-header .inst-title {
-    font-size: 18px;
-    font-weight: 800;
-    letter-spacing: 1.5px;
-    text-transform: uppercase;
-    color: #1e3a8a;
-    margin: 0;
-  }
-  .report-header .sub-title {
-    font-size: 13px;
-    font-weight: 600;
-    color: #475569;
-    margin: 3px 0 0;
-  }
-  .report-header .doc-title {
-    font-size: 15px;
-    font-weight: 700;
-    color: #0f172a;
-    margin: 6px 0 0;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-  }
-  .report-meta-box {
-    margin-bottom: 16px;
-    border: 1px solid #cbd5e1;
-    border-radius: 6px;
-    padding: 12px 16px;
-    background: #f8fafc;
-  }
-  .meta-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 8px;
-  }
-  .meta-row:last-child {
-    margin-bottom: 0;
-  }
-  .meta-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 13px;
-  }
-  .meta-label {
-    font-weight: 700;
-    color: #334155;
-    text-transform: uppercase;
-    font-size: 11px;
-    letter-spacing: 0.5px;
-  }
-  .meta-val {
-    font-weight: 600;
-    color: #0f172a;
-  }
-  .meta-line {
-    display: inline-block;
-    border-bottom: 1.5px solid #334155;
-    min-width: 170px;
-    height: 14px;
-  }
-  table.report-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 8px;
-    margin-bottom: 16px;
-  }
-  table.report-table th, table.report-table td {
-    border: 1px solid #94a3b8;
-    padding: 7px 10px;
-    font-size: 12px;
-    text-align: left;
-  }
-  table.report-table th {
-    background: #1e3a8a;
-    color: #ffffff;
-    font-weight: 700;
-    text-transform: uppercase;
-    font-size: 11px;
-    letter-spacing: 0.5px;
-  }
-  table.report-table tr:nth-child(even) td {
-    background: #f8fafc;
-  }
-  .text-center {
-    text-align: center;
-  }
-  .badge {
-    display: inline-block;
-    padding: 2px 8px;
-    border-radius: 4px;
-    font-size: 11px;
-    font-weight: 700;
-    text-transform: uppercase;
-  }
-  .badge-present { background: #dcfce7; color: #15803d; }
-  .badge-late    { background: #fef3c7; color: #b45309; }
-  .badge-absent  { background: #fee2e2; color: #dc2626; }
-  .badge-dropped { background: #f1f5f9; color: #64748b; }
-  .badge-score   { font-weight: 700; color: #1e3a8a; }
-  .summary-bar {
-    display: flex;
-    justify-content: space-between;
-    font-size: 12px;
-    font-weight: 600;
-    color: #334155;
-    padding: 8px 12px;
-    background: #f1f5f9;
-    border: 1px solid #e2e8f0;
-    border-radius: 4px;
-    margin-bottom: 30px;
-  }
-  .signature-block {
-    display: flex;
-    justify-content: space-between;
-    margin-top: 40px;
-    page-break-inside: avoid;
-  }
-  .signature-box {
-    width: 250px;
-    text-align: center;
-  }
-  .sig-line {
-    border-bottom: 1.5px solid #0f172a;
-    margin-bottom: 6px;
-    height: 40px;
-  }
-  .sig-name {
-    font-weight: 700;
-    font-size: 13px;
-  }
-  .sig-role {
-    font-size: 11px;
-    color: #64748b;
-  }
+  @page { size: letter portrait; margin: 10mm; }
+  body { margin: 0; padding: 24px; background: #ffffff; }
+  ${reportStyles}
   @media print {
     body { padding: 0; }
+    .no-print { display: none !important; }
   }
 </style>
 </head>
 <body>
-  <div class="report-header">
-    <h1 class="inst-title">TrackED Academic Portal</h1>
-    <div class="sub-title">College of Engineering &amp; Technology • Official Academic Record</div>
-    <div class="doc-title">${escapeHtml(reportTitle)}</div>
-  </div>
-
-  <div class="report-meta-box">
-    <div class="meta-row">
-      <div class="meta-item">
-        <span class="meta-label">Date:</span>
-        <span class="meta-val">${displayDate}</span>
-      </div>
-      ${assessmentName ? `
-      <div class="meta-item">
-        <span class="meta-label">Assessment:</span>
-        <span class="meta-val">${escapeHtml(assessmentName)}</span>
-      </div>` : `
-      <div class="meta-item">
-        <span class="meta-label">Course:</span>
-        <span class="meta-val">${fullCourse}</span>
-      </div>`}
+  <div class="no-print" style="position: sticky; top: 0; background: #1e3a8a; color: #ffffff; padding: 12px 24px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1000; font-family: sans-serif; margin: -24px -24px 20px -24px;">
+    <div style="font-size: 14px; font-weight: 600;">
+      📄 TrackED Report • Choose "Save as PDF" in print destination to save file
     </div>
-
-    <div class="meta-row">
-      <div class="meta-item">
-        <span class="meta-label">Instructor Name:</span>
-        <span class="meta-val">${teacherNameText}</span>
-      </div>
-      ${assessmentName ? `
-      <div class="meta-item">
-        <span class="meta-label">Course:</span>
-        <span class="meta-val">${fullCourse}</span>
-      </div>` : `
-      <div class="meta-item">
-        <span class="meta-label">Record Type:</span>
-        <span class="meta-val">Daily Class Attendance</span>
-      </div>`}
-    </div>
-
-    <div class="meta-row">
-      <div class="meta-item">
-        <span class="meta-label">Program:</span>
-        <span class="meta-line"></span>
-      </div>
-      <div class="meta-item">
-        <span class="meta-label">Year Level:</span>
-        <span class="meta-line"></span>
-      </div>
+    <div style="display: flex; gap: 10px;">
+      <button onclick="window.print()" style="background: #10b981; color: #ffffff; border: none; padding: 8px 18px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;">
+        🖨️ Print / Save as PDF
+      </button>
+      <button onclick="window.close()" style="background: #64748b; color: #ffffff; border: none; padding: 8px 14px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;">
+        ✕ Close
+      </button>
     </div>
   </div>
-
-  <table class="report-table">
-    <thead>
-      <tr>${thCells}</tr>
-    </thead>
-    <tbody>
-      ${trRows}
-    </tbody>
-  </table>
-
-  <div class="summary-bar">
-    <span>${escapeHtml(summary || "")}</span>
-    <span>Printed On: ${new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
-  </div>
-
-  <div class="signature-block">
-    <div class="signature-box">
-      <div class="sig-line"></div>
-      <div class="sig-name">${teacherNameText}</div>
-      <div class="sig-role">Instructor Signature over Printed Name</div>
-    </div>
-    <div class="signature-box">
-      <div class="sig-line"></div>
-      <div class="sig-name">Department Head / Dean</div>
-      <div class="sig-role">Dean of Engineering &amp; Technology</div>
-    </div>
+  <div class="report-container" style="max-width: 800px; margin: 0 auto;">
+    ${reportContentInner}
   </div>
 </body>
 </html>`;
 
-        function triggerIframePrint(content) {
-            let printFrame = document.getElementById("tracked_print_frame");
-            if (!printFrame) {
-                printFrame = document.createElement("iframe");
-                printFrame.id = "tracked_print_frame";
-                printFrame.style.position = "fixed";
-                printFrame.style.right = "0";
-                printFrame.style.bottom = "0";
-                printFrame.style.width = "0";
-                printFrame.style.height = "0";
-                printFrame.style.border = "0";
-                printFrame.style.visibility = "hidden";
-                document.body.appendChild(printFrame);
+        function openPrintWindow(content) {
+            const printWin = window.open("", "_blank");
+            if (!printWin) {
+                alert("Pop-up blocked by browser. Please allow pop-ups for TrackED to download or print reports.");
+                return;
             }
-            const doc = printFrame.contentWindow.document;
-            doc.open();
-            doc.write(content);
-            doc.close();
+            printWin.document.open();
+            printWin.document.write(content);
+            printWin.document.close();
+            printWin.focus();
             setTimeout(() => {
-                printFrame.contentWindow.focus();
-                printFrame.contentWindow.print();
-            }, 300);
+                try {
+                    printWin.print();
+                } catch (e) {
+                    console.warn("Auto-print preview trigger error:", e);
+                }
+            }, 500);
         }
 
         const cleanCourseCode = (courseCode || "Course").replace(/[^a-zA-Z0-9_-]/g, "_");
@@ -401,36 +461,66 @@ document.addEventListener("DOMContentLoaded", () => {
         const cleanDate = (displayDate || "").replace(/[^a-zA-Z0-9_-]/g, "_");
         const downloadFilename = `TrackED_${cleanTitle}_${cleanCourseCode}_${cleanDate}.pdf`;
 
-        // Direct PDF download using html2pdf if available
+        // Direct PDF download via html2pdf
         if (typeof window.html2pdf === "function") {
-            const container = document.createElement("div");
-            container.id = "tracked_pdf_export_container";
-            container.style.position = "fixed";
-            container.style.left = "-9999px";
-            container.style.top = "0";
-            container.style.width = "780px";
-            container.style.background = "#ffffff";
-            container.innerHTML = printHtml;
-            document.body.appendChild(container);
+            const renderStage = document.createElement("div");
+            renderStage.id = "tracked_pdf_export_stage";
+            renderStage.style.position = "fixed";
+            renderStage.style.top = "0";
+            renderStage.style.left = "0";
+            renderStage.style.width = "780px";
+            renderStage.style.background = "#ffffff";
+            renderStage.style.zIndex = "-9999";
+            renderStage.style.opacity = "1";
+            renderStage.style.pointerEvents = "none";
+            renderStage.innerHTML = `<style>${reportStyles}</style><div class="report-container">${reportContentInner}</div>`;
+            document.body.appendChild(renderStage);
+
+            showPdfToast("Generating PDF... Download will start in a moment.", "info");
 
             const opt = {
                 margin:       [8, 8, 8, 8],
                 filename:     downloadFilename,
                 image:        { type: "jpeg", quality: 0.98 },
-                html2canvas:  { scale: 2, useCORS: true, logging: false },
-                jsPDF:        { unit: "mm", format: "letter", orientation: "portrait" }
+                html2canvas:  { 
+                    scale: 2, 
+                    useCORS: true, 
+                    logging: false,
+                    scrollY: 0,
+                    scrollX: 0
+                },
+                jsPDF:        { unit: "mm", format: "letter", orientation: "portrait" },
+                pagebreak:    { mode: ["avoid-all", "css", "legacy"] }
             };
 
-            window.html2pdf().set(opt).from(container).save().then(() => {
-                container.remove();
+            let finished = false;
+            const safetyTimeout = setTimeout(() => {
+                if (!finished) {
+                    finished = true;
+                    if (renderStage.parentNode) renderStage.remove();
+                    showPdfToast("Direct generation taking long. Opening print window...", "warning");
+                    openPrintWindow(fullPrintableHtml);
+                }
+            }, 8000);
+
+            window.html2pdf().set(opt).from(renderStage).save().then(() => {
+                if (finished) return;
+                finished = true;
+                clearTimeout(safetyTimeout);
+                if (renderStage.parentNode) renderStage.remove();
+                showPdfToast("PDF downloaded successfully! Check your Downloads folder.", "success");
             }).catch(err => {
-                console.error("PDF download failed, falling back to print dialog:", err);
-                container.remove();
-                triggerIframePrint(printHtml);
+                console.error("html2pdf generation error:", err);
+                if (finished) return;
+                finished = true;
+                clearTimeout(safetyTimeout);
+                if (renderStage.parentNode) renderStage.remove();
+                showPdfToast("Direct download failed. Opening printable view...", "warning");
+                openPrintWindow(fullPrintableHtml);
             });
         } else {
-            // Fallback to browser print dialog
-            triggerIframePrint(printHtml);
+            showPdfToast("Opening print window...", "info");
+            openPrintWindow(fullPrintableHtml);
         }
     }
 
@@ -2633,10 +2723,14 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         function openPrintActivityModal() {
+            if (currentActivities.length === 0) {
+                alert("No activities found for this course. Please create an activity first.");
+                return;
+            }
             const lockedActs = getLockedActivities();
             const savedList = currentActivities.filter(a => lockedActs.includes(parseInt(a.num, 10)));
             if (savedList.length === 0) {
-                alert("No saved activities found for this course. Please save scores first before printing.");
+                alert("No saved activities found for this course. Please enter scores and click 'Save Scores' first before printing.");
                 return;
             }
             if (printActivitySelect) {
@@ -3252,10 +3346,14 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         function openPrintQuizModal() {
+            if (currentQuizzes.length === 0) {
+                alert("No quizzes found for this course. Please create a quiz first.");
+                return;
+            }
             const lockedQs = getLockedQuizzes();
             const savedList = currentQuizzes.filter(q => lockedQs.includes(parseInt(q.num, 10)));
             if (savedList.length === 0) {
-                alert("No saved quizzes found for this course. Please save scores first before printing.");
+                alert("No saved quizzes found for this course. Please enter scores and click 'Save Scores' first before printing.");
                 return;
             }
             if (printQuizSelect) {
@@ -3871,10 +3969,14 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         function openPrintExamModal() {
+            if (currentExams.length === 0) {
+                alert("No exams found for this course. Please create an exam first.");
+                return;
+            }
             const lockedExs = getLockedExams();
             const savedList = currentExams.filter(ex => lockedExs.includes(parseInt(ex.num, 10)));
             if (savedList.length === 0) {
-                alert("No saved exams found for this course. Please save scores first before printing.");
+                alert("No saved exams found for this course. Please enter scores and click 'Save Scores' first before printing.");
                 return;
             }
             if (printExamSelect) {
@@ -4043,11 +4145,11 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
             }
 
-            // Update print button state: print is only allowed once saved
+            // Update print button state
             const printAttendanceBtn = document.getElementById("printAttendanceBtn");
             if (printAttendanceBtn) {
-                printAttendanceBtn.disabled = !hasRecord;
-                printAttendanceBtn.title = hasRecord ? "Download attendance report (PDF)" : "Attendance for this date must be saved before printing";
+                printAttendanceBtn.disabled = false;
+                printAttendanceBtn.title = hasRecord ? "Download saved attendance report (PDF)" : "Download current attendance sheet (PDF)";
             }
 
             // Render students
@@ -4162,15 +4264,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // Print Attendance Action Handler
         function doPrintAttendance() {
-            const dateKey = attendanceDateInput.value;
+            const dateKey = (attendanceDateInput && attendanceDateInput.value) ? attendanceDateInput.value : getTodayLocalDate();
             if (!dateKey) {
                 alert("Please select a date first.");
                 return;
             }
-            if (!attendanceMap[dateKey]) {
-                alert("Please save attendance for this date before printing.");
-                return;
-            }
+            const isSaved = Boolean(attendanceMap[dateKey]);
             const dayRecord = attendanceMap[dateKey] || {};
             const activeEnrolled = getEnrolledStudentsForCourse(currentActiveCourse);
             const sorted = [...activeEnrolled].sort((a, b) => studentSortKey(a).localeCompare(studentSortKey(b)));
@@ -4187,7 +4286,14 @@ document.addEventListener("DOMContentLoaded", () => {
                     droppedCount++;
                     statusBadge = `<span class="badge badge-dropped">Dropped</span>`;
                 } else {
-                    const stStatus = dayRecord[st.id] || "absent";
+                    let stStatus = "absent";
+                    if (isSaved) {
+                        stStatus = dayRecord[st.id] || "absent";
+                    } else {
+                        const selectEl = document.querySelector(`.attendance-status-select[data-student-id="${st.id}"]`);
+                        stStatus = selectEl ? selectEl.value : (dayRecord[st.id] || "absent");
+                    }
+
                     if (stStatus === "present") {
                         presentCount++;
                         statusBadge = `<span class="badge badge-present">Present</span>`;
@@ -4210,7 +4316,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const summary = `Total Enrolled: ${sorted.length} | Present: ${presentCount} | Late: ${lateCount} | Absent: ${absentCount} | Dropped: ${droppedCount}`;
 
             printAcademicReport({
-                reportTitle: "Student Attendance Record",
+                reportTitle: isSaved ? "Student Attendance Record" : "Student Attendance Record (Draft / In-Progress)",
                 assessmentName: null,
                 dateStr: dateKey,
                 courseCode: currentActiveCourseCode || localStorage.getItem("tracked_selected_course_code") || "",

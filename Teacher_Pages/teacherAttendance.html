@@ -78,7 +78,7 @@
                         <button type="button" id="todayDateBtn" title="Set to Today's date" style="background: #2563eb; color: #ffffff; border: none; padding: 6px 12px; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
                             <i class="fa-solid fa-clock"></i> Today
                         </button>
-                        <button type="button" class="print-btn" id="printAttendanceBtn" disabled title="Attendance for this date must be saved before printing">
+                        <button type="button" class="print-btn" id="printAttendanceBtn" title="Download Attendance Record (PDF)">
                             <i class="fa-solid fa-file-pdf"></i> Print PDF
                         </button>
                     </div>
@@ -127,8 +127,13 @@
 
     <!-- Supabase CDN + PDF Library + Backend Adapter -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="../js/html2pdf.bundle.min.js"></script>
-    <script src="../js/supabaseClient.js"></script>
-    <script src="../js/teacherDashboard.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script>
+        if (typeof window.html2pdf === "undefined") {
+            document.write('<script src="../js/html2pdf.bundle.min.js"><\/script>');
+        }
+    </script>
+    <script src="../js/supabaseClient.js?v=20261022_pdf3"></script>
+    <script src="../js/teacherDashboard.js?v=20261022_pdf3"></script>
 </body>
 </html>
