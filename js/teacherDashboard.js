@@ -341,10 +341,8 @@ document.addEventListener("DOMContentLoaded", () => {
         let parts = baseStr.split("-");
         if (parts.length !== 3) return getTodayLocalDate();
         let dt = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
-        if (dt.getDay() === 6) {
-            dt.setDate(dt.getDate() - 1); // Saturday -> Friday
-        } else if (dt.getDay() === 0) {
-            dt.setDate(dt.getDate() - 2); // Sunday -> Friday
+        if (dt.getDay() === 0) {
+            dt.setDate(dt.getDate() - 1); // Sunday -> Saturday
         }
         const y = dt.getFullYear();
         const m = String(dt.getMonth() + 1).padStart(2, "0");
@@ -4254,22 +4252,11 @@ document.addEventListener("DOMContentLoaded", () => {
                 dateStr = todayStr;
                 attendanceDateInput.value = todayStr;
             }
-            // Prevent recording on Saturday/Sunday (no Saturday classes)
-            if (isSaturday(dateStr)) {
+            // Prevent recording on Sunday (no Sunday classes)
+            if (isSunday(dateStr)) {
                 const validDate = getLatestValidClassDate(dateStr);
                 if (validDate >= courseMinDate) {
-                    showTrackedAlert("Cannot record attendance on Saturday as there are no Saturday classes. Selecting most recent class date (Friday).", "Class Schedule Notice", "warning");
-                    dateStr = validDate;
-                    attendanceDateInput.value = validDate;
-                } else {
-                    showTrackedAlert("Cannot record attendance on Saturday as there are no Saturday classes.", "Class Schedule Notice", "warning");
-                    dateStr = courseMinDate;
-                    attendanceDateInput.value = courseMinDate;
-                }
-            } else if (isSunday(dateStr)) {
-                const validDate = getLatestValidClassDate(dateStr);
-                if (validDate >= courseMinDate) {
-                    showTrackedAlert("Cannot record attendance on Sunday as there are no Sunday classes. Selecting most recent class date (Friday).", "Class Schedule Notice", "warning");
+                    showTrackedAlert("Cannot record attendance on Sunday as there are no Sunday classes. Selecting most recent class date (Saturday).", "Class Schedule Notice", "warning");
                     dateStr = validDate;
                     attendanceDateInput.value = validDate;
                 } else {
@@ -4395,13 +4382,13 @@ document.addEventListener("DOMContentLoaded", () => {
         attendanceDateInput.setAttribute("min", courseMinDate);
         attendanceDateInput.setAttribute("max", todayLocalStr);
 
-        // Default date selection: default to today (or Friday if today is Saturday/Sunday)
+        // Default date selection: default to today (or Saturday if today is Sunday)
         const initialValidDate = getLatestValidClassDate(todayLocalStr);
         if (!attendanceDateInput.value || attendanceDateInput.value > todayLocalStr) {
             attendanceDateInput.value = initialValidDate >= courseMinDate ? initialValidDate : courseMinDate;
         } else if (attendanceDateInput.value < courseMinDate) {
             attendanceDateInput.value = courseMinDate;
-        } else if (isSaturday(attendanceDateInput.value) || isSunday(attendanceDateInput.value)) {
+        } else if (isSunday(attendanceDateInput.value)) {
             const v = getLatestValidClassDate(attendanceDateInput.value);
             attendanceDateInput.value = v >= courseMinDate ? v : courseMinDate;
         }
@@ -4425,21 +4412,10 @@ document.addEventListener("DOMContentLoaded", () => {
                 attendanceDateInput.value = maxD;
                 chosenDate = maxD;
             }
-            if (isSaturday(chosenDate)) {
+            if (isSunday(chosenDate)) {
                 const validDate = getLatestValidClassDate(chosenDate);
                 if (validDate >= minD) {
-                    showTrackedAlert("Cannot record attendance on Saturday as there are no Saturday classes. Selecting most recent class date (Friday).", "Class Schedule Notice", "warning");
-                    chosenDate = validDate;
-                    attendanceDateInput.value = validDate;
-                } else {
-                    showTrackedAlert("Cannot record attendance on Saturday as there are no Saturday classes.", "Class Schedule Notice", "warning");
-                    chosenDate = minD;
-                    attendanceDateInput.value = minD;
-                }
-            } else if (isSunday(chosenDate)) {
-                const validDate = getLatestValidClassDate(chosenDate);
-                if (validDate >= minD) {
-                    showTrackedAlert("Cannot record attendance on Sunday as there are no Sunday classes. Selecting most recent class date (Friday).", "Class Schedule Notice", "warning");
+                    showTrackedAlert("Cannot record attendance on Sunday as there are no Sunday classes. Selecting most recent class date (Saturday).", "Class Schedule Notice", "warning");
                     chosenDate = validDate;
                     attendanceDateInput.value = validDate;
                 } else {
@@ -4458,18 +4434,10 @@ document.addEventListener("DOMContentLoaded", () => {
                 activeAttendanceDraft = {};
                 const todayStr = getTodayLocalDate();
                 const courseMin = getCourseCreationDate(currentActiveCourse);
-                if (isSaturday(todayStr)) {
-                    const validDate = getLatestValidClassDate(todayStr);
-                    const targetDate = validDate >= courseMin ? validDate : courseMin;
-                    showTrackedAlert("Today is Saturday. There are no Saturday classes, so displaying most recent class date (Friday).", "Class Schedule Notice", "warning");
-                    attendanceDateInput.value = targetDate;
-                    loadAttendanceForDate(targetDate);
-                    return;
-                }
                 if (isSunday(todayStr)) {
                     const validDate = getLatestValidClassDate(todayStr);
                     const targetDate = validDate >= courseMin ? validDate : courseMin;
-                    showTrackedAlert("Today is Sunday. There are no Sunday classes, so displaying most recent class date (Friday).", "Class Schedule Notice", "warning");
+                    showTrackedAlert("Today is Sunday. There are no Sunday classes, so displaying most recent class date (Saturday).", "Class Schedule Notice", "warning");
                     attendanceDateInput.value = targetDate;
                     loadAttendanceForDate(targetDate);
                     return;
@@ -4563,10 +4531,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
                 if (dateKey > todayStr) {
                     showTrackedAlert("Cannot record attendance for future dates.", "Date Restriction", "warning");
-                    return;
-                }
-                if (isSaturday(dateKey)) {
-                    showTrackedAlert("Cannot record attendance on Saturday as there are no Saturday classes.", "Class Schedule Notice", "warning");
                     return;
                 }
                 if (isSunday(dateKey)) {
