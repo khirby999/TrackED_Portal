@@ -2848,6 +2848,8 @@ document.addEventListener("DOMContentLoaded", () => {
         const printActivitySelect         = document.getElementById("printActivitySelect");
 
         function printSingleActivity(actNum) {
+            currentActivities = getActivities();
+            currentScores = getScores();
             const act = currentActivities.find(a => parseInt(a.num, 10) === parseInt(actNum, 10));
             if (!act) return;
             const enrolledStudents = getEnrolledStudentsForCourse(currentActiveCourse);
@@ -2891,6 +2893,8 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         function openPrintActivityModal() {
+            currentActivities = getActivities();
+            currentScores = getScores();
             if (currentActivities.length === 0) {
                 showTrackedAlert("No activities found for this course. Please create an activity first.", "No Activities", "info");
                 return;
@@ -3456,6 +3460,8 @@ document.addEventListener("DOMContentLoaded", () => {
         const printQuizSelect         = document.getElementById("printQuizSelect");
 
         function printSingleQuiz(quizNum) {
+            currentQuizzes = getQuizzes();
+            currentQuizScores = getQuizScores();
             const quiz = currentQuizzes.find(q => parseInt(q.num, 10) === parseInt(quizNum, 10));
             if (!quiz) return;
             const enrolledStudents = getEnrolledStudentsForCourse(currentActiveCourse);
@@ -3471,7 +3477,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (stDropped) {
                     scoreDisplay = `<span style="color: #94a3b8;">Dropped</span>`;
                 } else {
-                    const stScores = currentScores[st.id] || {};
+                    const stScores = currentQuizScores[st.id] || {};
                     const val = stScores[quiz.num];
                     if (val !== undefined && val !== null && val !== "") {
                         scoreDisplay = `<span class="badge-score">${val} / ${quiz.maxScore}</span>`;
@@ -3499,6 +3505,8 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         function openPrintQuizModal() {
+            currentQuizzes = getQuizzes();
+            currentQuizScores = getQuizScores();
             if (currentQuizzes.length === 0) {
                 showTrackedAlert("No quizzes found for this course. Please create a quiz first.", "No Quizzes", "info");
                 return;
@@ -4064,6 +4072,8 @@ document.addEventListener("DOMContentLoaded", () => {
         const printExamSelect         = document.getElementById("printExamSelect");
 
         function printSingleExam(examNum) {
+            currentExams = getExams();
+            currentExamScores = getExamScores();
             const exam = currentExams.find(ex => parseInt(ex.num, 10) === parseInt(examNum, 10));
             if (!exam) return;
             const enrolledStudents = getEnrolledStudentsForCourse(currentActiveCourse);
@@ -4079,7 +4089,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (stDropped) {
                     scoreDisplay = `<span style="color: #94a3b8;">Dropped</span>`;
                 } else {
-                    const stScores = currentScores[st.id] || {};
+                    const stScores = currentExamScores[st.id] || {};
                     const val = stScores[exam.num];
                     if (val !== undefined && val !== null && val !== "") {
                         scoreDisplay = `<span class="badge-score">${val} / ${exam.maxScore}</span>`;
@@ -4107,6 +4117,8 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         function openPrintExamModal() {
+            currentExams = getExams();
+            currentExamScores = getExamScores();
             if (currentExams.length === 0) {
                 showTrackedAlert("No exams found for this course. Please create an exam first.", "No Exams", "info");
                 return;
